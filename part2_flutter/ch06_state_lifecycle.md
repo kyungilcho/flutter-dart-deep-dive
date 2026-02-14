@@ -1,7 +1,7 @@
 # Ch 06. State와 생명주기 — 소스코드로 읽는 StatefulWidget의 일생
 
 > 📁 분석 대상: `_sources/flutter/packages/flutter/lib/src/widgets/framework.dart`
-> 📌 버전: Flutter 3.38.0-0.2.pre
+> 📌 버전: Flutter 3.41.1
 
 ---
 

@@ -2,7 +2,7 @@
 
 > 전환자 → 중급자 → 중급자+ 까지, **실제 프레임워크 소스코드**를 분석하며 배우는 Flutter/Dart
 
-[![Flutter](https://img.shields.io/badge/Flutter-3.38.0-02569B?logo=flutter)](https://flutter.dev)
+[![Flutter](https://img.shields.io/badge/Flutter-3.41.1-02569B?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.8-0175C2?logo=dart)](https://dart.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -92,7 +92,7 @@ Flutter/Dart의 공식 문서에서 다루지 않는 **내부 동작 원리**를
 
 | 저장소 | 버전/태그 | 분석 대상 |
 |--------|-----------|-----------| 
-| `flutter/flutter` | 3.38.0 | 프레임워크 핵심 (`packages/flutter/`) |
+| `flutter/flutter` | 3.41.1 | 프레임워크 핵심 (`packages/flutter/`) |
 | `flutter/engine` | latest | Impeller 렌더링 엔진 (`impeller/`) |
 | `dart-lang/sdk` | latest | Dart 언어 내부 (`sdk/lib/`) |
 | `rrousselGit/riverpod` | latest | 상태관리 (`packages/riverpod/`) |

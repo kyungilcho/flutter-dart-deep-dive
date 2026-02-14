@@ -1,7 +1,7 @@
 # Ch 07. BuildContext와 InheritedWidget — 데이터 전파의 비밀
 
 > 📁 분석 대상: `_sources/flutter/packages/flutter/lib/src/widgets/framework.dart`
-> 📌 버전: Flutter 3.38.0-0.2.pre
+> 📌 버전: Flutter 3.41.1
 
 ---
 

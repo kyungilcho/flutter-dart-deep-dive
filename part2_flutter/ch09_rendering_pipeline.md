@@ -1,7 +1,7 @@
 # Ch 09. 렌더링 파이프라인 — 프레임이 화면에 그려지기까지
 
 > 📁 분석 대상: `_sources/flutter/packages/flutter/lib/src/scheduler/binding.dart`, `rendering/binding.dart`, `widgets/binding.dart`
-> 📌 버전: Flutter 3.38.0-0.2.pre
+> 📌 버전: Flutter 3.41.1
 
 ---
 
