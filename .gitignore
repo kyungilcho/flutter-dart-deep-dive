@@ -1,0 +1,13 @@
+# Flutter/Dart 소스코드 (분석 참고용, 레포에 포함하지 않음)
+_sources/
+
+# OS 파일
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
