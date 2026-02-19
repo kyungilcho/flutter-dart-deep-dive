@@ -5,20 +5,9 @@
 
 ---
 
-## 📌 이 챕터의 목표
+## 9.1 프레임 처리의 큰 그림
 
-`setState()`을 호출하면 화면에 변화가 나타납니다. 그 사이에 무슨 일이 일어나는 걸까요? 이 챕터에서는:
-
-1. **VSync 신호**에서 **GPU 전송**까지의 전체 프레임 처리 과정 추적
-2. **SchedulerPhase** 5단계의 의미와 순서
-3. **WidgetsBinding.drawFrame**의 Build → Layout → Paint → Composite 파이프라인 분석
-4. `setState` → `markNeedsBuild` → 실제 리빌드까지의 정확한 타이밍
-
----
-
-## 🔵 기초 — 프레임 처리의 큰 그림
-
-Flutter의 렌더링은 **VSync** 신호에 의해 구동됩니다. VSync가 오면 엔진이 프레임워크에 "지금 프레임을 만들어"라고 요청하며, 프레임워크는 두 단계에 걸쳐 프레임을 처리합니다:
+Flutter의 렌더링은 **VSync** 신호에 의해 구동된다. VSync가 오면 엔진이 프레임워크에 "지금 프레임을 만들어"라고 요청하며, 프레임워크는 두 단계에 걸쳐 프레임을 처리한다:
 
 ```
 VSync 신호 (OS)
@@ -42,7 +31,7 @@ VSync 신호 (OS)
 
 ---
 
-## 🟡 중급 — SchedulerPhase: 5단계의 상태 관리
+## 9.2 SchedulerPhase: 5단계의 상태 관리
 
 ### SchedulerPhase enum
 
@@ -97,7 +86,7 @@ void handleBeginFrame(Duration? rawTimeStamp) {
 }
 ```
 
-> 💡 **Transient vs Persistent**: `transientCallbacks`는 한 번 실행되면 자동 제거됩니다 (= Ticker). `persistentCallbacks`는 매 프레임마다 영구적으로 실행됩니다 (= drawFrame).
+> 💡 **Transient vs Persistent**: `transientCallbacks`는 한 번 실행되면 자동 제거된다 (= Ticker). `persistentCallbacks`는 매 프레임마다 영구적으로 실행된다 (= drawFrame).
 
 ### `handleDrawFrame` — 렌더링 파이프라인
 
@@ -132,9 +121,9 @@ void handleDrawFrame() {
 
 ---
 
-## 🔴 심화 — `drawFrame()`: Build → Layout → Paint → Composite
+## 9.3 `drawFrame()`: Build → Layout → Paint → Composite
 
-Flutter의 Binding 계층은 mixin 체인으로 구성됩니다:
+Flutter의 Binding 계층은 mixin 체인으로 구성된다:
 
 ```
 WidgetsFlutterBinding
@@ -157,7 +146,7 @@ void _handlePersistentFrameCallback(Duration timeStamp) {
 }
 ```
 
-persistentCallback으로 등록된 이 메서드가 `drawFrame()`을 호출합니다.
+persistentCallback으로 등록된 이 메서드가 `drawFrame()`을 호출한다.
 
 ### `WidgetsBinding.drawFrame()` — Build 추가
 
@@ -247,7 +236,7 @@ sequenceDiagram
 
 ---
 
-## 🔴 심화 — `BuildOwner.buildScope`: 더티 리스트 처리
+## 9.4 `BuildOwner.buildScope`: 더티 리스트 처리
 
 ### 더티 엘리먼트가 처리되는 과정
 
@@ -275,11 +264,11 @@ void buildScope(Element context, [VoidCallback? callback]) {
 }
 ```
 
-> 💡 **depth 기준 정렬**: 부모를 먼저 빌드하면 자식의 더티 플래그가 자연스럽게 해소될 수 있습니다. 불필요한 자식 리빌드를 회피하는 핵심 최적화입니다.
+> 💡 **depth 기준 정렬**: 부모를 먼저 빌드하면 자식의 더티 플래그가 자연스럽게 해소될 수 있다. 불필요한 자식 리빌드를 회피하는 핵심 최적화이다.
 
 ---
 
-## 🟡 중급 — `setState`에서 화면 갱신까지의 전체 경로
+## 9.5 `setState`에서 화면 갱신까지의 전체 경로
 
 ```
 setState(() { counter++ })
@@ -316,11 +305,11 @@ flushLayout() → flushPaint() → compositeFrame()
 🖥️ 화면 갱신!
 ```
 
-> ⚠️ `setState()`은 **즉시** 화면을 갱신하지 않습니다. element를 dirty로 표시하고, **다음 VSync**에서 일괄 처리됩니다. 이것이 Flutter가 60fps를 유지할 수 있는 이유입니다.
+> ⚠️ `setState()`은 **즉시** 화면을 갱신하지 않는다. element를 dirty로 표시하고, **다음 VSync**에서 일괄 처리된다. 이것이 Flutter가 60fps를 유지할 수 있는 이유이다.
 
 ---
 
-## 🟡 중급 — `scheduleFrame` vs `scheduleWarmUpFrame`
+## 9.6 `scheduleFrame` vs `scheduleWarmUpFrame`
 
 ### `scheduleFrame` — 일반 프레임 스케줄링
 
@@ -364,11 +353,11 @@ void scheduleWarmUpFrame() {
 }
 ```
 
-> 💡 `scheduleWarmUpFrame`은 VSync를 기다리지 않고 즉시 프레임을 처리합니다. `runApp()`이 호출된 직후 첫 프레임을 빠르게 렌더링하는 데 사용됩니다. Hot reload에서도 사용됩니다.
+> 💡 `scheduleWarmUpFrame`은 VSync를 기다리지 않고 즉시 프레임을 처리한다. `runApp()`이 호출된 직후 첫 프레임을 빠르게 렌더링하는 데 사용된다. Hot reload에서도 사용된다.
 
 ---
 
-## 🟡 중급 — `runApp()` 부터 첫 프레임까지
+## 9.7 `runApp()` 부터 첫 프레임까지
 
 ```dart
 // widgets/binding.dart L1574-1577
@@ -410,15 +399,15 @@ handleBeginFrame(null) → handleDrawFrame()
 
 ---
 
-## 🔴 심화 — 파이프라인 각 단계의 최적화
+## 9.8 파이프라인 각 단계의 최적화
 
 ### flushLayout — RelayoutBoundary
 
-`flushLayout()`은 `_nodesNeedingLayout` 리스트의 RenderObject만 처리합니다. `RelayoutBoundary` (Ch08 참고)가 변경 전파를 차단하여 불필요한 연쇄 레이아웃을 방지합니다.
+`flushLayout()`은 `_nodesNeedingLayout` 리스트의 RenderObject만 처리한다. `RelayoutBoundary` (Ch08 참고)가 변경 전파를 차단하여 불필요한 연쇄 레이아웃을 방지한다.
 
 ### flushPaint — RepaintBoundary
 
-`flushPaint()`는 `_nodesNeedingPaint` 리스트의 RenderObject만 처리합니다. `RepaintBoundary`가 페인팅 범위를 제한합니다. 별도 Layer를 생성하여 자식의 페인팅이 부모에 영향을 주지 않습니다.
+`flushPaint()`는 `_nodesNeedingPaint` 리스트의 RenderObject만 처리한다. `RepaintBoundary`가 페인팅 범위를 제한한다. 별도 Layer를 생성하여 자식의 페인팅이 부모에 영향을 주지 않는다.
 
 ### compositeFrame — Scene 생성
 
@@ -432,11 +421,11 @@ void compositeFrame() {
 }
 ```
 
-Layer 트리를 `Scene`으로 변환하고, `FlutterView.render(scene)`으로 엔진/GPU에 전달합니다.
+Layer 트리를 `Scene`으로 변환하고, `FlutterView.render(scene)`으로 엔진/GPU에 전달한다.
 
 ---
 
-## 🟡 중급 — SchedulerPhase별 안전한 작업
+## 9.9 SchedulerPhase별 안전한 작업
 
 | SchedulerPhase | 허용 | 금지 |
 |---|---|---|
@@ -446,8 +435,8 @@ Layer 트리를 `Scene`으로 변환하고, `FlutterView.render(scene)`으로 �
 | `persistentCallbacks` | Build/Layout/Paint 진행 | `setState` (assert 실패) |
 | `postFrameCallbacks` | 정리, 다음 프레임 스케줄링, `setState` | — |
 
-> ⚠️ `persistentCallbacks` 도중 `setState`를 호출하면 assert 에러가 발생합니다:
-> *"Build scheduled during frame."* 이것은 무한 루프를 방지하기 위한 설계입니다.
+> ⚠️ `persistentCallbacks` 도중 `setState`를 호출하면 assert 에러가 발생한다:
+> *"Build scheduled during frame."* 이것은 무한 루프를 방지하기 위한 설계이다.
 
 ```dart
 // widgets/binding.dart L1121-1151
@@ -470,22 +459,22 @@ void _handleBuildScheduled() {
 
 ---
 
-## 🎯 면접 Q&A
+## 9.10 면접 Q&A
 
 ### Q1. `setState()`을 호출하면 즉시 화면이 갱신되나요?
 
-**A**: 아닙니다. `setState()`는 element를 dirty로 표시하고 `markNeedsBuild()`를 호출합니다. 이는 `BuildOwner`의 dirty list에 해당 element를 추가하고, `SchedulerBinding.ensureVisualUpdate()`를 통해 다음 VSync에서 프레임을 스케줄합니다.
+**A**: 아니다. `setState()`는 element를 dirty로 표시하고 `markNeedsBuild()`를 호출한다. 이는 `BuildOwner`의 dirty list에 해당 element를 추가하고, `SchedulerBinding.ensureVisualUpdate()`를 통해 다음 VSync에서 프레임을 스케줄한다.
 
-실제 리빌드는 다음 프레임의 `handleDrawFrame()` → `drawFrame()` → `buildOwner.buildScope()` 단계에서 일괄 처리됩니다. 이 배치 처리 방식 덕분에 같은 프레임 내에서 `setState`가 여러 번 호출되어도 리빌드는 한 번만 발생합니다.
+실제 리빌드는 다음 프레임의 `handleDrawFrame()` → `drawFrame()` → `buildOwner.buildScope()` 단계에서 일괄 처리된다. 이 배치 처리 방식 덕분에 같은 프레임 내에서 `setState`가 여러 번 호출되어도 리빌드는 한 번만 발생한다.
 
 ---
 
 ### Q2. Flutter의 프레임 처리 파이프라인을 설명해주세요.
 
-**A**: VSync 신호를 받으면 두 단계로 처리됩니다:
+**A**: VSync 신호를 받으면 두 단계로 처리된다:
 
-1. **handleBeginFrame**: `transientCallbacks`를 실행합니다. AnimationController의 Ticker가 여기서 새 값으로 업데이트됩니다.
-2. **handleDrawFrame**: `persistentCallbacks`를 실행하며, 핵심은 `drawFrame()`입니다:
+1. **handleBeginFrame**: `transientCallbacks`를 실행한다. AnimationController의 Ticker가 여기서 새 값으로 업데이트된다.
+2. **handleDrawFrame**: `persistentCallbacks`를 실행하며, 핵심은 `drawFrame()`이다:
    - **Build**: `buildOwner.buildScope()`로 dirty element들을 depth 순서로 리빌드
    - **Layout**: `flushLayout()`으로 dirty RenderObject의 크기/위치 계산
    - **Compositing bits**: `flushCompositingBits()`로 레이어 경계 결정
@@ -499,26 +488,26 @@ void _handleBuildScheduled() {
 
 ### Q3. `transientCallbacks`와 `persistentCallbacks`의 차이는?
 
-**A**: `transientCallbacks`는 `scheduleFrameCallback()`으로 등록되며, 한 번 실행되면 자동으로 제거됩니다. AnimationController의 Ticker가 대표적입니다. 매 프레임 `Ticker.scheduleTick()`이 새로운 콜백을 등록합니다.
+**A**: `transientCallbacks`는 `scheduleFrameCallback()`으로 등록되며, 한 번 실행되면 자동으로 제거된다. AnimationController의 Ticker가 대표적이다. 매 프레임 `Ticker.scheduleTick()`이 새로운 콜백을 등록한다.
 
-`persistentCallbacks`는 `addPersistentFrameCallback()`으로 등록되며, 앱 수명 동안 매 프레임 호출됩니다. 해제할 수 없습니다. `RendererBinding`이 `drawFrame()`을 persistent callback으로 등록하여 매 프레임 Build/Layout/Paint가 실행될 수 있도록 합니다.
+`persistentCallbacks`는 `addPersistentFrameCallback()`으로 등록되며, 앱 수명 동안 매 프레임 호출된다. 해제할 수 없다. `RendererBinding`이 `drawFrame()`을 persistent callback으로 등록하여 매 프레임 Build/Layout/Paint가 실행될 수 있도록 한다.
 
 ---
 
 ### Q4. `postFrameCallback`은 언제 사용하나요?
 
-**A**: `addPostFrameCallback()`으로 등록하며, 현재 프레임의 렌더링 파이프라인이 완료된 직후에 한 번 실행됩니다. 주요 사용 사례:
+**A**: `addPostFrameCallback()`으로 등록하며, 현재 프레임의 렌더링 파이프라인이 완료된 직후에 한 번 실행된다. 주요 사용 사례:
 
 1. **레이아웃 완료 후 크기 확인**: `WidgetsBinding.instance.addPostFrameCallback((_) { final size = context.size; })`
 2. **빌드 완료 후 스크롤 위치 조정**
 3. **SnackBar나 Dialog 표시** (빌드 중에는 `setState`를 호출할 수 없으므로)
 
-`postFrameCallback`은 `SchedulerPhase.postFrameCallbacks` 단계에서 실행되므로, 이 안에서 `setState`를 호출하면 다음 프레임이 스케줄됩니다 (즉시 실행이 아님).
+`postFrameCallback`은 `SchedulerPhase.postFrameCallbacks` 단계에서 실행되므로, 이 안에서 `setState`를 호출하면 다음 프레임이 스케줄된다 (즉시 실행이 아님).
 
 ---
 
 ### Q5. `scheduleWarmUpFrame`은 왜 존재하나요?
 
-**A**: 일반 `scheduleFrame()`은 엔진에 VSync를 요청하고, OS가 VSync 신호를 보낼 때까지 기다립니다. 이는 몇 ms의 지연이 생길 수 있습니다. `scheduleWarmUpFrame()`은 VSync를 기다리지 않고 즉시 `handleBeginFrame()` + `handleDrawFrame()`을 실행합니다.
+**A**: 일반 `scheduleFrame()`은 엔진에 VSync를 요청하고, OS가 VSync 신호를 보낼 때까지 기다립니다. 이는 몇 ms의 지연이 생길 수 있다. `scheduleWarmUpFrame()`은 VSync를 기다리지 않고 즉시 `handleBeginFrame()` + `handleDrawFrame()`을 실행한다.
 
-`runApp()` 직후 첫 프레임을 가능한 빨리 렌더링하고, Hot reload 후 변경 사항을 즉시 반영하는 데 사용됩니다. 소스코드를 보면 warm-up 프레임 동안에는 `lockEvents()`로 터치 입력을 차단하여, 불완전한 상태에서 사용자 상호작용을 방지합니다.
+`runApp()` 직후 첫 프레임을 가능한 빨리 렌더링하고, Hot reload 후 변경 사항을 즉시 반영하는 데 사용된다. 소스코드를 보면 warm-up 프레임 동안에는 `lockEvents()`로 터치 입력을 차단하여, 불완전한 상태에서 사용자 상호작용을 방지한다.

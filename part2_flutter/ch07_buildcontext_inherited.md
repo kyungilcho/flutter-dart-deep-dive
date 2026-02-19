@@ -5,18 +5,7 @@
 
 ---
 
-## 📌 이 챕터의 목표
-
-Flutter 개발에서 `BuildContext`는 모든 곳에 등장합니다. `Theme.of(context)`, `MediaQuery.of(context)`, `Navigator.of(context)`... 이 챕터에서는:
-
-1. **BuildContext = Element**라는 사실을 소스코드로 증명
-2. `of(context)` 패턴이 왜 O(1)인지 내부 구조를 분석
-3. `InheritedWidget`이 어떻게 의존 위젯들에게 변경을 알리는지 추적
-4. `dependOnInheritedWidgetOfExactType` vs `getInheritedWidgetOfExactType` 차이의 설계 의도
-
----
-
-## 🔵 기초 — BuildContext는 Element이다
+## 7.1 BuildContext는 Element이다
 
 ### 인터페이스 정의
 
@@ -55,7 +44,7 @@ abstract class Element extends DiagnosticableTree implements BuildContext {
 }
 ```
 
-> 💡 `BuildContext`는 인터페이스이고, `Element`가 이를 구현합니다. `State.build(BuildContext context)`에서 받는 `context`는 실제로는 `StatefulElement` 인스턴스입니다. 이것은 `StatefulElement.build()`에서 확인됩니다:
+> 💡 `BuildContext`는 인터페이스이고, `Element`가 이를 구현한다. `State.build(BuildContext context)`에서 받는 `context`는 실제로는 `StatefulElement` 인스턴스이다. 이것은 `StatefulElement.build()`에서 확인된다:
 
 ```dart
 // framework.dart L5933-5934
@@ -66,7 +55,7 @@ Widget build() => state.build(this);
 
 ---
 
-## 🔵 기초 — 조상 탐색 메서드들
+## 7.2 조상 탐색 메서드들
 
 ### `findAncestorWidgetOfExactType` — O(n) 선형 탐색
 
@@ -82,7 +71,7 @@ T? findAncestorWidgetOfExactType<T extends Widget>() {
 }
 ```
 
-> ⚠️ **O(n)**: `_parent` 체인을 따라 루트까지 올라가며 검색합니다. 트리가 깊으면 느립니다.
+> ⚠️ **O(n)**: `_parent` 체인을 따라 루트까지 올라가며 검색한다. 트리가 깊으면 느립니다.
 
 ### `findAncestorStateOfType` — 마찬가지로 O(n)
 
@@ -120,7 +109,7 @@ T? findRootAncestorStateOfType<T extends State<StatefulWidget>>() {
 }
 ```
 
-> 💡 `findAncestorStateOfType`은 가장 가까운 조상을, `findRootAncestorStateOfType`은 가장 먼 조상을 찾습니다. 전자는 일찍 break할 수 있지만, 후자는 항상 루트까지 순회합니다.
+> 💡 `findAncestorStateOfType`은 가장 가까운 조상을, `findRootAncestorStateOfType`은 가장 먼 조상을 찾는다. 전자는 일찍 break할 수 있지만, 후자는 항상 루트까지 순회한다.
 
 ### 성능 비교표
 
@@ -134,7 +123,7 @@ T? findRootAncestorStateOfType<T extends State<StatefulWidget>>() {
 
 ---
 
-## 🟡 중급 — InheritedWidget의 데이터 전파
+## 7.3 InheritedWidget의 데이터 전파
 
 ### InheritedWidget 기본 구조
 
@@ -186,18 +175,18 @@ class AppTheme extends InheritedWidget {
 
 ---
 
-## 🔴 심화 — `_inheritedElements` 맵: O(1)의 비밀
+## 7.4 `_inheritedElements` 맵: O(1)의 비밀
 
 ### `_inheritedElements` — 영속 해시맵
 
-모든 Element는 `_inheritedElements`라는 맵을 갖고 있습니다:
+모든 Element는 `_inheritedElements`라는 맵을 갖고 있다:
 
 ```dart
 // Element 클래스 내부
 PersistentHashMap<Type, InheritedElement>? _inheritedElements;
 ```
 
-이 맵의 **key = InheritedWidget의 runtimeType**, **value = 해당 InheritedElement**입니다.
+이 맵의 **key = InheritedWidget의 runtimeType**, **value = 해당 InheritedElement**이다.
 
 ### 일반 Element의 `_updateInheritance()` — 부모 참조 공유
 
@@ -225,7 +214,7 @@ void _updateInheritance() {
 }
 ```
 
-> 💡 **PersistentHashMap**: 함수형 자료구조로, `put`이 기존 맵을 수정하지 않고 새 맵을 반환합니다. 이 덕분에 형제 노드들은 부모의 원본 맵을 공유하면서, 자기 자신만 추가한 새 맵을 자손에게 전달합니다.
+> 💡 **PersistentHashMap**: 함수형 자료구조로, `put`이 기존 맵을 수정하지 않고 새 맵을 반환한다. 이 덕분에 형제 노드들은 부모의 원본 맵을 공유하면서, 자기 자신만 추가한 새 맵을 자손에게 전달한다.
 
 ### 동작 시각화
 
@@ -305,11 +294,11 @@ graph LR
     style dependents fill:#FFB74D
 ```
 
-> 📌 **양방향 등록**: Element은 `_dependencies`에 자신이 의존하는 `InheritedElement`들을 기록하고, `InheritedElement`은 `_dependents`에 자신에게 의존하는 Element들을 기록합니다.
+> 📌 **양방향 등록**: Element은 `_dependencies`에 자신이 의존하는 `InheritedElement`들을 기록하고, `InheritedElement`은 `_dependents`에 자신에게 의존하는 Element들을 기록한다.
 
 ---
 
-## 🔴 심화 — InheritedWidget 업데이트 흐름
+## 7.5 InheritedWidget 업데이트 흐름
 
 ### `updateShouldNotify` → `notifyClients` 경로
 
@@ -375,7 +364,7 @@ sequenceDiagram
 
 ---
 
-## 🔴 심화 — `dependOn` vs `getInherited`: 등록의 차이
+## 7.6 `dependOn` vs `getInherited`: 등록의 차이
 
 ### `getInheritedWidgetOfExactType` — 의존 등록 없이 읽기만
 
@@ -432,11 +421,11 @@ void didChangeDependencies() {
 
 ---
 
-## 🟡 중급 — deactivate 시 의존 해제
+## 7.7 deactivate 시 의존 해제
 
 ### Element가 트리에서 제거될 때
 
-Element가 deactivate하면 자신이 등록했던 모든 InheritedElement에서 의존을 해제합니다:
+Element가 deactivate하면 자신이 등록했던 모든 InheritedElement에서 의존을 해제한다:
 
 ```dart
 // Element.deactivate() 내부 (간략화)
@@ -460,13 +449,13 @@ void removeDependent(Element dependent) {
 }
 ```
 
-이 메커니즘 덕분에 트리에서 제거된 위젯이 InheritedWidget의 `_dependents`에 남아 메모리 누수가 되는 것을 방지합니다.
+이 메커니즘 덕분에 트리에서 제거된 위젯이 InheritedWidget의 `_dependents`에 남아 메모리 누수가 되는 것을 방지한다.
 
 ---
 
-## 🟡 중급 — InheritedModel: 선택적 리빌드
+## 7.8 InheritedModel: 선택적 리빌드
 
-기본 `InheritedWidget`은 값이 바뀌면 모든 의존 위젯을 리빌드합니다. `InheritedModel`은 **aspect**를 사용해 특정 부분만 변경된 경우 해당 부분에 의존하는 위젯만 리빌드합니다.
+기본 `InheritedWidget`은 값이 바뀌면 모든 의존 위젯을 리빌드한다. `InheritedModel`은 **aspect**를 사용해 특정 부분만 변경된 경우 해당 부분에 의존하는 위젯만 리빌드한다.
 
 ### `updateDependencies` 오버라이드
 
@@ -560,11 +549,11 @@ class EmailDisplay extends StatelessWidget {
 }
 ```
 
-> 💡 `email`만 바뀌면 `NameDisplay`는 리빌드되지 않습니다. 이것이 `InheritedModel`의 성능 이점입니다.
+> 💡 `email`만 바뀌면 `NameDisplay`는 리빌드되지 않는다. 이것이 `InheritedModel`의 성능 이점이다.
 
 ---
 
-## 🟡 중급 — of(context) 패턴과 Builder 패턴
+## 7.9 `of(context)` 패턴과 Builder 패턴
 
 ### 흔한 실수: 같은 build에서 of(context) 호출
 
@@ -611,52 +600,52 @@ MyPage             MyPageElement ← context는 여기!
        └─ Button        └─ ButtonElement
 ```
 
-`build(context)`의 `context`는 `MyPageElement`입니다. `Scaffold`는 이 Element의 **자식**이지 조상이 아닙니다. `findAncestorWidgetOfExactType`은 부모 방향으로만 탐색하므로 찾을 수 없습니다.
+`build(context)`의 `context`는 `MyPageElement`이다. `Scaffold`는 이 Element의 **자식**이지 조상이 아니다. `findAncestorWidgetOfExactType`은 부모 방향으로만 탐색하므로 찾을 수 없다.
 
 ---
 
-## 🎯 면접 Q&A
+## 7.10 면접 Q&A
 
 ### Q1. `BuildContext`는 무엇인가요?
 
-**A**: `BuildContext`는 인터페이스이고, `Element`가 이를 구현합니다. `State.build(BuildContext context)`에서 받는 `context`는 실제로 `StatefulElement` 인스턴스입니다. 소스코드에서 `StatefulElement.build()`가 `state.build(this)`를 호출하므로, `this`(Element 자신)가 BuildContext로 전달됩니다.
+**A**: `BuildContext`는 인터페이스이고, `Element`가 이를 구현한다. `State.build(BuildContext context)`에서 받는 `context`는 실제로 `StatefulElement` 인스턴스이다. 소스코드에서 `StatefulElement.build()`가 `state.build(this)`를 호출하므로, `this`(Element 자신)가 BuildContext로 전달된다.
 
-BuildContext를 통해 트리 탐색(`findAncestor*`), InheritedWidget 의존 등록(`dependOnInherited*`), 크기/위치 정보 접근 등이 가능합니다. Element가 구현하므로 트리 내 위치 정보를 모두 갖고 있습니다.
+BuildContext를 통해 트리 탐색(`findAncestor*`), InheritedWidget 의존 등록(`dependOnInherited*`), 크기/위치 정보 접근 등이 가능하다. Element가 구현하므로 트리 내 위치 정보를 모두 갖고 있다.
 
 ---
 
 ### Q2. `Theme.of(context)`는 어떻게 동작하고, 왜 O(1)인가요?
 
-**A**: 내부적으로 `context.dependOnInheritedWidgetOfExactType<Theme>()`을 호출합니다. 이 메서드는 Element의 `_inheritedElements`라는 `PersistentHashMap<Type, InheritedElement>`에서 `Type` 키로 해시맵 조회를 합니다. 따라서 O(1)입니다.
+**A**: 내부적으로 `context.dependOnInheritedWidgetOfExactType<Theme>()`을 호출한다. 이 메서드는 Element의 `_inheritedElements`라는 `PersistentHashMap<Type, InheritedElement>`에서 `Type` 키로 해시맵 조회를 한다. 따라서 O(1)이다.
 
-이 맵은 `_updateInheritance()` 메서드로 유지됩니다. 일반 Element는 부모의 맵을 그대로 참조하고, `InheritedElement`만 `PersistentHashMap.put()`으로 자신을 추가한 새 맵을 만듭니다. 이 불변 해시맵 구조 덕분에 형제 노드들은 맵을 안전하게 공유할 수 있습니다.
+이 맵은 `_updateInheritance()` 메서드로 유지된다. 일반 Element는 부모의 맵을 그대로 참조하고, `InheritedElement`만 `PersistentHashMap.put()`으로 자신을 추가한 새 맵을 만듭니다. 이 불변 해시맵 구조 덕분에 형제 노드들은 맵을 안전하게 공유할 수 있다.
 
-반면 `findAncestorWidgetOfExactType`은 `_parent` 체인을 순회하므로 O(n)입니다.
+반면 `findAncestorWidgetOfExactType`은 `_parent` 체인을 순회하므로 O(n)이다.
 
 ---
 
 ### Q3. `dependOnInheritedWidgetOfExactType`과 `getInheritedWidgetOfExactType`의 차이는?
 
-**A**: 둘 다 O(1)로 `_inheritedElements` 맵에서 값을 조회합니다. 하지만 핵심 차이는 **의존 등록** 여부입니다.
+**A**: 둘 다 O(1)로 `_inheritedElements` 맵에서 값을 조회한다. 하지만 핵심 차이는 **의존 등록** 여부이다.
 
-`dependOn`은 양방향 의존을 등록합니다: ①Element의 `_dependencies`에 InheritedElement을 추가하고, ②InheritedElement의 `_dependents`에 Element를 추가합니다. InheritedWidget이 `updateShouldNotify`에서 true를 반환하면, `_dependents`의 모든 Element에 `didChangeDependencies()`를 호출해 리빌드를 트리거합니다.
+`dependOn`은 양방향 의존을 등록한다: ①Element의 `_dependencies`에 InheritedElement을 추가하고, ②InheritedElement의 `_dependents`에 Element를 추가한다. InheritedWidget이 `updateShouldNotify`에서 true를 반환하면, `_dependents`의 모든 Element에 `didChangeDependencies()`를 호출해 리빌드를 트리거한다.
 
-`getInherited`는 조회만 하고 등록하지 않으므로, 값이 변경되어도 리빌드되지 않습니다. 초기화 시 값을 한 번만 읽고 나중에 변경을 추적할 필요 없을 때 유용합니다.
+`getInherited`는 조회만 하고 등록하지 않으므로, 값이 변경되어도 리빌드되지 않는다. 초기화 시 값을 한 번만 읽고 나중에 변경을 추적할 필요 없을 때 유용하다.
 
 ---
 
 ### Q4. 같은 build 메서드 안에서 `Scaffold.of(context)`가 실패하는 이유는?
 
-**A**: `build(BuildContext context)`의 `context`는 현재 위젯의 Element입니다. `Scaffold`는 이 Element의 **자식**으로 생성됩니다. `of(context)`는 내부적으로 `findAncestorStateOfType` 또는 `dependOnInheritedWidgetOfExactType`을 호출하는데, 이들은 `_parent` 방향으로만 탐색합니다. 자식 방향은 검색하지 않습니다.
+**A**: `build(BuildContext context)`의 `context`는 현재 위젯의 Element이다. `Scaffold`는 이 Element의 **자식**으로 생성된다. `of(context)`는 내부적으로 `findAncestorStateOfType` 또는 `dependOnInheritedWidgetOfExactType`을 호출하는데, 이들은 `_parent` 방향으로만 탐색한다. 자식 방향은 검색하지 않는다.
 
-**해결**: `Builder` 위젯으로 `Scaffold` 아래에 새 Element(= BuildContext)를 만들거나, `GlobalKey`를 통해 직접 접근합니다.
+**해결**: `Builder` 위젯으로 `Scaffold` 아래에 새 Element(= BuildContext)를 만들거나, `GlobalKey`를 통해 직접 접근한다.
 
 ---
 
 ### Q5. `InheritedWidget`의 `updateShouldNotify`가 false를 반환하면 어떻게 되나요?
 
-**A**: `InheritedElement.updated()` 소스를 보면, `updateShouldNotify(oldWidget)`이 false를 반환하면 `notifyClients()`를 호출하지 않습니다. 따라서 `_dependents`에 등록된 어떤 Element도 `didChangeDependencies()`를 받지 않으며, 리빌드되지 않습니다.
+**A**: `InheritedElement.updated()` 소스를 보면, `updateShouldNotify(oldWidget)`이 false를 반환하면 `notifyClients()`를 호출하지 않는다. 따라서 `_dependents`에 등록된 어떤 Element도 `didChangeDependencies()`를 받지 않으며, 리빌드되지 않는다.
 
-이는 중요한 성능 최적화입니다. 예를 들어 부모가 리빌드되어 `InheritedWidget`의 새 인스턴스가 생기더라도, 데이터가 동일하면 `updateShouldNotify`에서 false를 반환하여 하위 트리 전체의 불필요한 리빌드를 방지합니다.
+이는 중요한 성능 최적화이다. 예를 들어 부모가 리빌드되어 `InheritedWidget`의 새 인스턴스가 생기더라도, 데이터가 동일하면 `updateShouldNotify`에서 false를 반환하여 하위 트리 전체의 불필요한 리빌드를 방지한다.
 
-추가적으로, `InheritedModel`은 `updateShouldNotifyDependent`를 통해 "어떤 aspect가 바뀌었는지"를 기준으로 개별 의존 위젯에 대해 선택적 리빌드를 할 수 있어 더 세밀한 최적화가 가능합니다.
+추가적으로, `InheritedModel`은 `updateShouldNotifyDependent`를 통해 "어떤 aspect가 바뀌었는지"를 기준으로 개별 의존 위젯에 대해 선택적 리빌드를 할 수 있어 더 세밀한 최적화가 가능하다.

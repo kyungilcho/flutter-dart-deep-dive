@@ -1,20 +1,8 @@
 # Ch 08. 레이아웃 시스템과 RenderObject — 직접 다루기
 
-## 이 챕터에서 배울 것
+## 8.1 왜 RenderObject를 직접 다뤄야 하는가
 
-- `RenderObject`와 `RenderBox`의 **레이아웃 프로토콜**은 어떻게 동작하는가?
-- `BoxConstraints`의 설계 철학 — "Constraints go down, Sizes go up, Parent sets position"
-- `RenderObjectWidget`을 직접 만들어야 하는 경우와 그 방법
-- `performLayout()`, `paint()`, `hitTest()` 구현 패턴
-- Relayout Boundary와 Repaint Boundary의 소스코드 수준 이해
-
-> 📌 **선수 지식**: [Ch05 — 위젯의 본질](../part2_flutter/ch05_widget_fundamentals.md)에서 Widget/Element/RenderObject 세 개의 트리 관계를 이해해야 합니다.
-
----
-
-## 왜 RenderObject를 직접 다뤄야 하는가?
-
-Flutter의 위젯 시스템은 **두 개의 추상화 레벨**이 있습니다:
+Flutter의 위젯 시스템은 **두 개의 추상화 레벨**이 있다:
 
 ```
 추상화 레벨 높음 ───────────────────────────────── 낮음
@@ -30,7 +18,7 @@ Flutter의 위젯 시스템은 **두 개의 추상화 레벨**이 있습니다:
   → 95%의 코드                  → 4%의 코드                → 1%의 코드
 ```
 
-99%의 Flutter 코드는 `StatelessWidget`/`StatefulWidget`으로 충분합니다. 하지만 다음 상황에서는 `RenderObject`를 직접 다뤄야 합니다:
+99%의 Flutter 코드는 `StatelessWidget`/`StatefulWidget`으로 충분한다. 하지만 다음 상황에서는 `RenderObject`를 직접 다뤄야 한다:
 
 | 상황 | 예시 | 이유 |
 |------|------|------|
@@ -41,7 +29,7 @@ Flutter의 위젯 시스템은 **두 개의 추상화 레벨**이 있습니다:
 
 ---
 
-## 🔵 기초 — Constraints 프로토콜
+## 8.2 Constraints 프로토콜
 
 ### Flutter 레이아웃의 3대 원칙
 
@@ -138,7 +126,7 @@ class BoxConstraints extends Constraints {
 
 ---
 
-## 🟡 중급 — RenderObjectWidget 계층 구조
+## 8.3 RenderObjectWidget 계층 구조
 
 ### 위젯 ↔ RenderObject 연결
 
@@ -233,7 +221,7 @@ sequenceDiagram
 
 ---
 
-## 🔴 심화 — 커스텀 RenderObject 만들기
+## 8.4 커스텀 RenderObject 만들기
 
 ### 예제 1: LeafRenderObjectWidget — 원형 도트
 
@@ -529,14 +517,14 @@ class RenderRadialLayout extends RenderBox
 
 ---
 
-## 🔴 심화 — performLayout() 프로토콜 소스코드 분석
+## 8.5 `performLayout()` 프로토콜 소스코드 분석
 
 ### layout() 메서드 — 엔트리 포인트
 
 > 📁 `_sources/flutter/packages/flutter/lib/src/rendering/object.dart`
 
 ```dart
-// ⚠️ layout()은 부모가 호출합니다 — 절대 직접 호출하지 않음
+// ⚠️ layout()은 부모가 호출한다 — 절대 직접 호출하지 않음
 void layout(Constraints constraints, { bool parentUsesSize = false }) {
   // 1️⃣ Relayout Boundary 판단
   final bool isRelayoutBoundary =
@@ -615,7 +603,7 @@ Size computeDryLayout(BoxConstraints constraints) {
 
 ---
 
-## 🔴 심화 — paint() 프로토콜
+## 8.6 `paint()` 프로토콜
 
 ### PaintingContext와 Canvas
 
@@ -665,11 +653,11 @@ markNeedsLayout()              markNeedsPaint()
 
 ---
 
-## 🔴 심화 — Relayout Boundary 소스코드 분석
+## 8.7 Relayout Boundary 소스코드 분석
 
 ### Relayout Boundary란?
 
-레이아웃 변경의 **전파를 차단하는 경계**입니다. 자식의 layout이 변해도 이 경계를 넘어 부모에게 전파되지 않습니다.
+레이아웃 변경의 **전파를 차단하는 경계**이다. 자식의 layout이 변해도 이 경계를 넘어 부모에게 전파되지 않는다.
 
 ```dart
 // Relayout Boundary가 되는 4가지 조건 (유사 코드):
@@ -696,7 +684,7 @@ _isRelayoutBoundary =
 ### 생성하는 위젯 예시
 
 ```dart
-// 📌 이 위젯들은 자식에게 tight constraints를 전달합니다:
+// 📌 이 위젯들은 자식에게 tight constraints를 전달한다:
 SizedBox(width: 100, height: 100, child: ...)      // 고정 크기
 ConstrainedBox(constraints: BoxConstraints.tight()) // 강제 tight
 Expanded(child: ...)                                // Flex가 tight로 줌
@@ -712,7 +700,7 @@ GridView()  // 내부적으로 sizedByParent = true
 
 ---
 
-## 🟡 중급 — CustomPaint vs 커스텀 RenderObject
+## 8.8 CustomPaint vs 커스텀 RenderObject
 
 ### 언제 무엇을 쓸까?
 
@@ -759,11 +747,11 @@ class MyCustomWidget extends LeafRenderObjectWidget {
 
 ---
 
-## 💼 실무에서는
+## 8.9 실무 패턴
 
 ### Flutter 내장 위젯이 RenderObject를 쓰는 방법
 
-실제로 Flutter의 기본 위젯들도 모두 `RenderObjectWidget`입니다. 소스를 보면:
+실제로 Flutter의 기본 위젯들도 모두 `RenderObjectWidget`이다. 소스를 보면:
 
 ```dart
 // Padding → SingleChildRenderObjectWidget
@@ -822,31 +810,31 @@ List<DiagnosticsNode> debugDescribeChildren() {
 
 ---
 
-## 🎯 면접 대비 Q&A
+## 8.10 면접 Q&A
 
 ### Q1. Flutter의 Constraints 프로토콜을 설명하세요.
 
-**모범 답변**: Flutter의 레이아웃은 "Constraints go down, Sizes go up, Parent sets position"이라는 단방향 흐름을 따릅니다. 부모는 자식에게 `BoxConstraints`(minWidth, maxWidth, minHeight, maxHeight)를 전달하고, 자식은 그 범위 내에서 자신의 `Size`를 결정하여 부모에게 보고합니다. 최종적으로 부모가 `parentData.offset`을 설정하여 자식의 위치를 결정합니다. 이 프로토콜 덕분에 레이아웃은 항상 O(n) — 트리를 두 번(down → up) 순회하면 완료됩니다. 비교하면 CSS의 레이아웃은 여러 패스가 필요할 수 있어 비효율적입니다.
+**모범 답변**: Flutter의 레이아웃은 "Constraints go down, Sizes go up, Parent sets position"이라는 단방향 흐름을 따릅니다. 부모는 자식에게 `BoxConstraints`(minWidth, maxWidth, minHeight, maxHeight)를 전달하고, 자식은 그 범위 내에서 자신의 `Size`를 결정하여 부모에게 보고한다. 최종적으로 부모가 `parentData.offset`을 설정하여 자식의 위치를 결정한다. 이 프로토콜 덕분에 레이아웃은 항상 O(n) — 트리를 두 번(down → up) 순회하면 완료된다. 비교하면 CSS의 레이아웃은 여러 패스가 필요할 수 있어 비효율적이다.
 
 ### Q2. `markNeedsLayout()`과 `markNeedsPaint()`의 차이는?
 
-**모범 답변**: `markNeedsLayout()`은 크기나 위치가 변경되었을 때 호출하며, `performLayout()` → `paint()` 순서로 다시 실행됩니다. `markNeedsPaint()`는 시각적 속성만 변경되었을 때(색상, 투명도 등) 호출하며 `paint()`만 다시 실행됩니다. `markNeedsLayout()`은 항상 `markNeedsPaint()`를 포함하므로, 불필요하게 `markNeedsLayout()`을 호출하면 성능이 떨어집니다. 실무에서 커스텀 RenderObject의 setter를 작성할 때, 어떤 속성이 size에 영향을 주는지 판단하여 적절한 mark 메서드를 호출하는 것이 성능 최적화의 핵심입니다.
+**모범 답변**: `markNeedsLayout()`은 크기나 위치가 변경되었을 때 호출하며, `performLayout()` → `paint()` 순서로 다시 실행된다. `markNeedsPaint()`는 시각적 속성만 변경되었을 때(색상, 투명도 등) 호출하며 `paint()`만 다시 실행된다. `markNeedsLayout()`은 항상 `markNeedsPaint()`를 포함하므로, 불필요하게 `markNeedsLayout()`을 호출하면 성능이 떨어집니다. 실무에서 커스텀 RenderObject의 setter를 작성할 때, 어떤 속성이 size에 영향을 주는지 판단하여 적절한 mark 메서드를 호출하는 것이 성능 최적화의 핵심이다.
 
 ### Q3. Relayout Boundary가 생성되는 조건과 그 의미는?
 
-**모범 답변**: Relayout Boundary는 4가지 조건 중 하나를 만족할 때 생성됩니다: ① `parentUsesSize: false` (부모가 자식 크기를 사용하지 않음), ② `sizedByParent: true` (크기가 constraints에만 의존), ③ `constraints.isTight` (tight constraints), ④ repaint boundary가 아닌 경우. 이 경계가 형성되면 자식의 layout 변경이 부모에게 전파되지 않습니다. 실무에서는 `SizedBox`나 `Expanded`로 고정 크기를 지정하거나, `ListView`/`GridView`가 내부적으로 `sizedByParent`를 사용하여 자동으로 Relayout Boundary가 됩니다.
+**모범 답변**: Relayout Boundary는 4가지 조건 중 하나를 만족할 때 생성된다: ① `parentUsesSize: false` (부모가 자식 크기를 사용하지 않음), ② `sizedByParent: true` (크기가 constraints에만 의존), ③ `constraints.isTight` (tight constraints), ④ repaint boundary가 아닌 경우. 이 경계가 형성되면 자식의 layout 변경이 부모에게 전파되지 않는다. 실무에서는 `SizedBox`나 `Expanded`로 고정 크기를 지정하거나, `ListView`/`GridView`가 내부적으로 `sizedByParent`를 사용하여 자동으로 Relayout Boundary가 된다.
 
 ### Q4. `RenderObjectWidget`의 `Leaf`, `SingleChild`, `MultiChild` 차이를 설명하세요.
 
-**모범 답변**: 세 가지 모두 `RenderObjectWidget`의 서브클래스로, 자식 수에 따라 Element 관리 방식이 다릅니다. `LeafRenderObjectWidget`은 자식이 없으며(예: `RawImage`), `SingleChildRenderObjectWidget`은 자식 하나를 가지며(예: `Padding`, `Opacity`) RenderObject는 `RenderObjectWithChildMixin`을 사용합니다. `MultiChildRenderObjectWidget`은 여러 자식을 가지며(예: `Stack`, `Row`) RenderObject는 `ContainerRenderObjectMixin`으로 연결 리스트를 관리합니다. 이 분류가 중요한 이유는, Element가 자식의 mount/unmount를 자동 처리해주므로 개발자는 `createRenderObject()`와 `updateRenderObject()`만 구현하면 됩니다.
+**모범 답변**: 세 가지 모두 `RenderObjectWidget`의 서브클래스로, 자식 수에 따라 Element 관리 방식이 다릅니다. `LeafRenderObjectWidget`은 자식이 없으며(예: `RawImage`), `SingleChildRenderObjectWidget`은 자식 하나를 가지며(예: `Padding`, `Opacity`) RenderObject는 `RenderObjectWithChildMixin`을 사용한다. `MultiChildRenderObjectWidget`은 여러 자식을 가지며(예: `Stack`, `Row`) RenderObject는 `ContainerRenderObjectMixin`으로 연결 리스트를 관리한다. 이 분류가 중요한 이유는, Element가 자식의 mount/unmount를 자동 처리해주므로 개발자는 `createRenderObject()`와 `updateRenderObject()`만 구현하면 된다.
 
 ### Q5. `CustomPaint`와 커스텀 `RenderObject`의 차이는?
 
-**모범 답변**: `CustomPaint`는 `Canvas` API로 그리기만 하는 간편한 방식이고, 레이아웃은 부모가 결정합니다. 커스텀 `RenderObject`는 `performLayout()`, `paint()`, `hitTest()` 모두를 직접 구현하는 저수준 방식입니다. 기존 레이아웃 위에 시각적 요소만 추가한다면 `CustomPaint`로 충분하지만(예: 차트, 그래프), 레이아웃 로직 자체를 커스텀해야 한다면(예: 방사형 배치, 겹침 레이아웃) `RenderObject`를 직접 작성해야 합니다. 성능 면에서는 커스텀 `RenderObject`가 불필요한 레이어를 제거할 수 있어 최적이지만, 복잡도가 훨씬 높습니다.
+**모범 답변**: `CustomPaint`는 `Canvas` API로 그리기만 하는 간편한 방식이고, 레이아웃은 부모가 결정한다. 커스텀 `RenderObject`는 `performLayout()`, `paint()`, `hitTest()` 모두를 직접 구현하는 저수준 방식이다. 기존 레이아웃 위에 시각적 요소만 추가한다면 `CustomPaint`로 충분하지만(예: 차트, 그래프), 레이아웃 로직 자체를 커스텀해야 한다면(예: 방사형 배치, 겹침 레이아웃) `RenderObject`를 직접 작성해야 한다. 성능 면에서는 커스텀 `RenderObject`가 불필요한 레이어를 제거할 수 있어 최적이지만, 복잡도가 훨씬 높다.
 
 ---
 
-## 핵심 정리
+## 8.11 핵심 정리
 
 | 개념 | 핵심 | 소스 근거 |
 |------|------|-----------|

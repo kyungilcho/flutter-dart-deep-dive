@@ -1,21 +1,8 @@
 # Ch 04. 비동기 프로그래밍 — Future, Stream, 그리고 이벤트 루프
 
-## 이 챕터에서 배울 것
+## 4.1 왜 비동기가 필요한가?
 
-- Dart의 이벤트 루프는 어떻게 동작하는가?
-- `Future`는 내부적으로 어떤 상태 머신인가?
-- `async`/`await`는 실제로 무엇으로 변환되는가?
-- Microtask와 Event의 차이, 그리고 실행 순서
-- `Stream`은 언제 꼭 필요한가?
-- `Zone`은 무엇이며 Flutter에서 왜 중요한가?
-
----
-
-## 🟢 기본 — 비동기를 이해하는 출발점
-
-### 왜 비동기가 필요한가?
-
-Dart는 **싱글 스레드** 언어입니다. UI 프레임워크인 Flutter에서 네트워크 요청이나 파일 읽기를 동기적으로 하면 16ms 안에 프레임을 그릴 수 없게 되어 **화면이 멈춥니다(jank)**.
+Dart는 **싱글 스레드** 언어다. UI 프레임워크인 Flutter에서 네트워크 요청이나 파일 읽기를 동기적으로 하면 16ms 안에 프레임을 그릴 수 없어 **화면이 멈춘다(jank)**.
 
 ```dart
 // ❌ 만약 Dart가 동기적이었다면 (가상 코드)
@@ -27,7 +14,7 @@ String data = await http.get('https://api.example.com/data');
 // await 동안 이벤트 루프가 다른 작업(UI 렌더링 등)을 처리
 ```
 
-### 🔗 다른 언어와 비교
+## 4.2 다른 언어와 비교
 
 | 특성 | JavaScript | Kotlin | Swift | Dart |
 |------|------------|--------|-------|------|
@@ -36,9 +23,9 @@ String data = await http.get('https://api.example.com/data');
 | 데이터 스트림 | `AsyncIterable` | `Flow` | `AsyncSequence` | **`Stream`** |
 | 병렬 처리 | Web Workers | 코루틴 + Dispatchers | Actor | **`Isolate`** |
 
-> **핵심**: Dart의 비동기 모델은 JavaScript와 매우 유사합니다. 싱글 스레드에서 이벤트 루프로 동작하며, `Future`는 JS의 `Promise`에 해당합니다. 하지만 `Isolate`를 통해 진정한 병렬 처리도 가능합니다.
+> **핵심**: Dart의 비동기 모델은 JavaScript와 매우 유사하다. 싱글 스레드에서 이벤트 루프로 동작하며, `Future`는 JS의 `Promise`에 해당한다. 다만 `Isolate`를 통해 진정한 병렬 처리도 가능하다.
 
-### `Future` — 미래에 완료될 값
+## 4.3 `Future` — 미래에 완료될 값
 
 ```dart
 // Future: "나중에 완료될 계산의 결과"를 나타내는 객체
@@ -52,9 +39,9 @@ final name = await fetchUserName();
 print(name); // "Dart"
 ```
 
-### `async`/`await`는 문법적 설탕이다
+## 4.4 `async`/`await`는 문법적 설탕이다
 
-`async`/`await`는 `.then()` 체이닝의 **문법적 설탕(syntactic sugar)**입니다:
+`async`/`await`는 `.then()` 체이닝의 **문법적 설탕(syntactic sugar)**이다:
 
 ```dart
 // async/await 버전
@@ -74,15 +61,13 @@ Future<int> computeTotal() {
 }
 ```
 
-> **주의**: 이것은 단순화된 설명이며, 실제 컴파일러는 상태 머신 기반의 더 효율적인 코드를 생성합니다 (심화 섹션에서 다룸).
+> **주의**: 이것은 단순화된 설명이며, 실제 컴파일러는 상태 머신 기반의 더 효율적인 코드를 생성한다 (심화 섹션에서 다룸).
 
 ---
 
-## 🟡 중급 — 이벤트 루프의 두 개의 큐
+## 4.5 Microtask Queue vs Event Queue
 
-### Microtask Queue vs Event Queue
-
-Dart의 이벤트 루프에는 **두 개의 큐**가 있습니다:
+Dart의 이벤트 루프에는 **두 개의 큐**가 있다:
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -102,7 +87,7 @@ Dart의 이벤트 루프에는 **두 개의 큐**가 있습니다:
   Microtask Queue가 **완전히 비어야** Event Queue 처리
 ```
 
-### 📁 소스코드로 확인: Microtask 스케줄러
+### 소스코드로 확인: Microtask 스케줄러
 
 > 📁 `_sources/dart-sdk/sdk/lib/async/schedule_microtask.dart`
 
@@ -136,9 +121,123 @@ void _startMicrotaskLoop() {
 }
 ```
 
-> **핵심 발견**: 마이크로태스크 큐는 **단일 연결 리스트**로 구현되어 있으며, 모든 마이크로태스크가 소진될 때까지 이벤트 큐의 다음 이벤트를 처리하지 않습니다. 이것이 마이크로태스크 무한 루프가 UI를 멈추는 이유입니다.
+> **핵심**: 마이크로태스크 큐는 **단일 연결 리스트**로 구현되어 있으며, 모든 마이크로태스크가 소진될 때까지 이벤트 큐의 다음 이벤트를 처리하지 않는다. 마이크로태스크 무한 루프가 UI를 멈추는 이유가 여기에 있다.
 
-### 실행 순서 퀴즈
+### JavaScript 이벤트 루프와의 비교
+
+Dart와 JavaScript는 둘 다 **싱글 스레드 + 이벤트 루프** 모델이지만, 내부 구조에 차이가 있다.
+
+#### 큐 구조 비교
+
+```
+[JavaScript]                          [Dart]
+┌──────────────────────────┐          ┌──────────────────────────┐
+│        Event Loop        │          │        Event Loop        │
+│                          │          │                          │
+│  1. Macrotask Queue      │          │  1. Microtask Queue      │
+│     • setTimeout         │          │     • Future.then()      │
+│     • setInterval        │          │     • scheduleMicrotask  │
+│     • I/O callbacks      │          │     • async/await 재개    │
+│     • MessageChannel     │          │                          │
+│                          │          │  2. Event Queue          │
+│  2. Microtask Queue      │          │     • Timer              │
+│     • Promise.then()     │          │     • I/O                │
+│     • queueMicrotask()   │          │     • UI events          │
+│     • MutationObserver   │          │     • Future() 생성자     │
+│                          │          │                          │
+│  3. requestAnimationFrame│          │  ※ 렌더링은 Flutter      │
+│     • 렌더링 전 콜백      │          │    엔진이 별도 관리       │
+│                          │          │                          │
+│  4. 렌더링 (브라우저)     │          │                          │
+└──────────────────────────┘          └──────────────────────────┘
+```
+
+#### 루프 1회전(tick)의 실행 순서
+
+```
+[JavaScript]                          [Dart]
+1. Macrotask 1개 실행                 1. Microtask Queue 전부 처리
+2. Microtask Queue 전부 처리          2. Event Queue에서 1개 실행
+3. requestAnimationFrame 처리         3. → 1로 돌아감
+4. 렌더링 (Layout → Paint)
+5. → 1로 돌아감
+```
+
+핵심적인 차이점:
+
+```javascript
+// JavaScript: macrotask 1개 → microtask 전부 → 다음 macrotask
+setTimeout(() => console.log('A'), 0);  // macrotask
+setTimeout(() => console.log('B'), 0);  // macrotask
+Promise.resolve().then(() => console.log('C'));  // microtask
+
+// 실행: C → A → B
+// (macrotask 사이사이에 microtask가 끼어듦)
+```
+
+```dart
+// Dart: microtask 전부 → event 1개 → microtask 전부 → event 1개
+Timer.run(() => print('A'));  // event queue
+Timer.run(() => print('B'));  // event queue
+Future.microtask(() => print('C'));  // microtask
+
+// 실행: C → A → B
+// (결과는 같지만, Dart은 event queue 항목 사이에도 microtask를 확인)
+```
+
+결과는 비슷해 보이지만, **중요한 차이**는 JavaScript에는 **macrotask와 microtask 사이에 렌더링이 끼어드는 시점**이 있다는 것이다. 브라우저가 렌더링 타이밍을 제어한다. 반면 Dart(Flutter)에서는 **렌더링이 이벤트 루프와 별개로 Flutter 엔진이 관리**하며, `SchedulerBinding`이 `vsync` 시그널에 따라 프레임을 스케줄한다.
+
+#### 렌더링 파이프라인 차이
+
+| 항목 | JavaScript (브라우저) | Dart (Flutter) |
+|---|---|---|
+| 렌더링 트리거 | 브라우저가 이벤트 루프 내에서 자동 스케줄 | `SchedulerBinding`이 vsync에 맞춰 스케줄 |
+| 렌더링 콜백 | `requestAnimationFrame` (이벤트 루프 안) | `handleBeginFrame` / `handleDrawFrame` (vsync 콜백) |
+| 렌더링 트리거 | 이벤트 루프가 직접 렌더링 단계를 실행 | C++ 엔진이 vsync 시그널을 받아 Dart event queue에 콜백 전달 |
+| 렌더링 실행 | 이벤트 루프 안에서 실행 | **같은 UI 스레드(Dart Isolate)**에서 이벤트로 실행 |
+| UI 블로킹 | 마이크로태스크 과다 → 렌더링 지연 | 마이크로태스크 과다 → 프레임 드롭 (동일한 위험) |
+
+#### "렌더링이 별개"라는 오해
+
+흔히 "Flutter 렌더링은 엔진 레벨에서 별개"라는 표현을 쓰지만, 이는 부정확하다. **별개인 것은 트리거(vsync 시그널 수신)뿐이고, 실제 렌더링 함수는 같은 Dart UI 스레드에서 실행된다.**
+
+```
+C++ 엔진 (별도 스레드)              Dart UI 스레드 (이벤트 루프)
+─────────────────────              ──────────────────────────────
+vsync 시그널 수신                  
+  → Dart event queue에 콜백 등록 ──→  이벤트 루프가 꺼내서 실행:
+                                      • handleBeginFrame()   ← Dart 코드
+                                      • handleDrawFrame()    ← Dart 코드
+                                        ├─ build()           ← Dart 코드
+                                        ├─ layout()          ← Dart 코드
+                                        ├─ paint()           ← Dart 코드
+                                        └─ compositing → Layer Tree → Raster 스레드로
+```
+
+따라서 microtask가 Dart UI 스레드를 점유하면, JavaScript든 Dart든 렌더링은 동일하게 블로킹된다.
+
+#### microtask 폭주 시 차이
+
+```javascript
+// JavaScript: microtask 무한 → 렌더링 완전 차단
+function bomb() {
+  Promise.resolve().then(bomb);  // 영원히 렌더링 안됨
+}
+```
+
+```dart
+// Dart: microtask 무한 → 동일하게 UI 완전 멈춤
+// vsync 콜백이 event queue에 들어오지만, microtask가 끝나야 event를 처리하므로
+void bomb() {
+  scheduleMicrotask(bomb);  // UI 완전 멈춤
+}
+```
+
+두 경우 모두 UI가 멈추며 **블로킹 원인도 동일하다**: 같은 스레드에서 microtask → event 순서로 처리하는데, microtask가 끝나지 않으면 event queue의 vsync 콜백(혹은 rAF)이 실행되지 못한다.
+
+> **면접 포인트**: "Dart와 JS의 이벤트 루프가 같은가?"라는 질문에 대해 — **큐 구조와 싱글 스레드 실행 모델은 유사하지만, 렌더링을 트리거하는 주체가 다르다.** JS는 이벤트 루프 자체가 렌더링 스케줄을 관장하고, Flutter는 C++ 엔진이 vsync를 받아 Dart 이벤트 루프에 작업을 넣는 구조다. 단, 실제 렌더링 코드(build/layout/paint)는 둘 다 같은 메인 스레드에서 실행되므로, **블로킹 결과는 동일하다.** 이 스레드 구조의 상세는 §4.12에서 다룬다.
+
+## 4.6 실행 순서 퀴즈
 
 ```dart
 void main() {
@@ -171,7 +270,7 @@ void main() {
 2. Microtask Queue가 **전부** 실행 (3, 4, 5)
 3. 마지막으로 Event Queue 실행 (2)
 
-### `Future()` vs `Future.microtask()` vs `Future.value()`
+## 4.7 `Future()` vs `Future.microtask()` vs `Future.value()`
 
 ```dart
 // Future(): Timer.run()으로 콜백 스케줄 → Event Queue에 들어감
@@ -193,7 +292,7 @@ factory Future.microtask(FutureOr<T> computation()) {
 
 ---
 
-## 🟡 중급 — Stream 심화
+## 4.8 Stream 심화
 
 ### Future vs Stream
 
@@ -258,13 +357,13 @@ final transformed = someStream
 
 ---
 
-## 🔴 심화 — Future의 내부 구현
+## 4.9 Future의 내부 구현
 
-### 📁 `_Future` 상태 머신
+### `_Future` 상태 머신
 
 > 📁 `_sources/dart-sdk/sdk/lib/async/future_impl.dart`
 
-`Future`의 실제 구현체인 `_Future<T>`는 **상태 머신**입니다:
+`Future`의 실제 구현체인 `_Future<T>`는 **상태 머신**이다:
 
 ```dart
 class _Future<T> implements Future<T> {
@@ -299,7 +398,7 @@ stateDiagram-v2
 
 ### `_resultOrListeners`의 이중 역할
 
-`_resultOrListeners` 필드는 **상태에 따라 의미가 달라집니다**:
+`_resultOrListeners` 필드는 **상태에 따라 의미가 달라진다**:
 
 | 상태 | `_resultOrListeners`의 내용 |
 |------|---------------------------|
@@ -309,7 +408,7 @@ stateDiagram-v2
 | `_stateValue` | `T` 타입의 결과 값 |
 | `_stateError` | `AsyncError` 객체 (에러 + 스택 트레이스) |
 
-> **설계 의도**: 하나의 필드로 여러 역할을 대체하여 **메모리를 절약**합니다. Future 객체는 매우 많이 생성되므로 바이트 단위의 절약도 중요합니다.
+> **설계 의도**: 하나의 필드로 여러 역할을 대체하여 **메모리를 절약**한다. Future 객체는 매우 많이 생성되므로 바이트 단위의 절약도 중요하다.
 
 ### `.then()`이 호출되면 실제로 무슨 일이 일어나는가?
 
@@ -336,7 +435,7 @@ Future<R> then<R>(FutureOr<R> f(T value), {Function? onError}) {
 }
 ```
 
-**이것이 의미하는 것**: `.then()`은 **즉시 반환**합니다. 콜백은 원본 Future가 완료될 때 **마이크로태스크로** 실행됩니다.
+**이것이 의미하는 것**: `.then()`은 **즉시 반환**한다. 콜백은 원본 Future가 완료될 때 **마이크로태스크로** 실행된다.
 
 ### `_FutureListener` — 콜백 체인
 
@@ -358,18 +457,18 @@ class _FutureListener<S, T> {
 }
 ```
 
-> **발견**: `await`는 내부적으로 `stateThenAwait` 타입의 `_FutureListener`를 생성합니다. 일반 `.then()`과 다른 플래그(`maskAwait = 16`)가 설정되어 VM이 `await`를 특별하게 최적화할 수 있습니다.
+> **참고**: `await`는 내부적으로 `stateThenAwait` 타입의 `_FutureListener`를 생성한다. 일반 `.then()`과 다른 플래그(`maskAwait = 16`)가 설정되어 VM이 `await`를 특별하게 최적화할 수 있다.
 
 ---
 
-### 🔴 심화 — `async/await` vs `.then()` 내부 구현 차이
+## 4.10 `async/await` vs `.then()` 내부 구현 차이
 
 > 📁 `_sources/dart-sdk/sdk/lib/async/future_impl.dart` — `.then()` vs `_thenAwait()`
 > 📁 `_sources/dart-sdk/sdk/lib/_internal/vm/lib/async_patch.dart` — `_SuspendState`
 
-`async/await`와 `.then()`은 겉보기에 같은 동작을 하지만, **내부 구현 경로가 완전히 다릅니다**. 이 차이를 이해하면 성능 최적화 판단의 근거가 됩니다.
+`async/await`와 `.then()`은 겉보기에 같은 동작을 하지만, **내부 구현 경로가 완전히 다르다**. 이 차이를 이해하면 성능 최적화 판단의 근거가 된다.
 
-#### 1️⃣ Zone 등록 — 가장 핵심적인 차이
+#### 1️⃣ Zone 등록 — 가장 큰 차이
 
 ```dart
 // 📄 future_impl.dart (Line 388~413)
@@ -403,18 +502,18 @@ Future<E> _thenAwait<E>(FutureOr<E> f(T value), Function onError) {
 
 **WHY Zone 등록을 건너뛸 수 있는가?**
 
-`async` 함수의 콜백은 **컴파일러가 생성**합니다. 사용자 코드가 아닙니다. 컴파일러가 생성한 콜백은:
+`async` 함수의 콜백은 **컴파일러가 생성**한다. 사용자 코드가 아니다. 컴파일러가 생성한 콜백은:
 1. 항상 올바른 타입을 가지고 (타입 체크 불필요)
 2. Zone 경계를 넘지 않으며 (Zone 래핑 불필요)
-3. `_SuspendState._resume()`을 호출할 뿐입니다
+3. `_SuspendState._resume()`을 호출할 뿐이다
 
-반면 `.then()`의 콜백은 **사용자가 작성**한 임의의 함수입니다. Zone에 등록하여 추적하고, 타입을 검증해야 합니다.
+반면 `.then()`의 콜백은 **사용자가 작성**한 임의의 함수다. Zone에 등록하여 추적하고, 타입을 검증해야 한다.
 
 #### 2️⃣ `_SuspendState` — async의 상태 머신
 
 > 📁 `_sources/dart-sdk/sdk/lib/_internal/vm/lib/async_patch.dart` (Line 188~521)
 
-`async` 함수는 컴파일 시 `_SuspendState` 기반의 **상태 머신**으로 변환됩니다:
+`async` 함수는 컴파일 시 `_SuspendState` 기반의 **상태 머신**으로 변환된다:
 
 ```dart
 // 원본 코드
@@ -560,15 +659,15 @@ Future<String> fetchUserProfile(int userId) async {
 }
 ```
 
-> **면접 포인트**: "async/await은 단순히 .then()의 문법적 설탕이 아닙니다. 내부적으로 `_SuspendState` 상태 머신, `_thenAwait()`의 Zone 등록 건너뛰기, 콜백 재사용, 이미 완료된 Future에 대한 fast path 등 **다른 최적화 경로**를 탑니다. 성능과 디버깅 모두에서 `async/await`가 유리하며, `.then()`은 fire-and-forget이나 동적 체이닝 같은 특수 상황에서만 쓰는 것이 좋습니다."
+> **면접 포인트**: "async/await은 단순히 .then()의 문법적 설탕이 아니다. 내부적으로 `_SuspendState` 상태 머신, `_thenAwait()`의 Zone 등록 건너뛰기, 콜백 재사용, 이미 완료된 Future에 대한 fast path 등 **다른 최적화 경로**를 탄다. 성능과 디버깅 모두에서 `async/await`가 유리하며, `.then()`은 fire-and-forget이나 동적 체이닝 같은 특수 상황에서만 쓰는 것이 좋다."
 
 ---
 
-## 🔴 심화 — Zone의 역할
+## 4.11 Zone의 역할
 
 ### Zone이란?
 
-`Zone`은 **비동기 콜백이 실행되는 컨텍스트**입니다. 비동기 코드가 어디서 스케줄되었는지를 추적합니다.
+`Zone`은 **비동기 콜백이 실행되는 컨텍스트**다. 비동기 코드가 어디서 스케줄되었는지를 추적한다.
 
 > 📁 `_sources/dart-sdk/sdk/lib/async/zone.dart`
 
@@ -626,7 +725,190 @@ runZonedGuarded(() {
 
 ---
 
-## 🟡 중급 — Isolate (진정한 병렬)
+## 4.12 Flutter 엔진의 스레드 구조
+
+§4.5에서 "렌더링 함수는 같은 Dart UI 스레드에서 실행된다"고 했다. 그렇다면 Flutter 엔진 전체는 어떤 스레드 구조로 동작하는가?
+
+### 4개의 Task Runner
+
+Flutter 엔진은 **4개의 독립된 스레드(Task Runner)**를 운용한다.
+
+> 📁 `_sources/flutter/engine/src/flutter/common/task_runners.h`
+
+```cpp
+// 엔진이 생성하는 4개의 Task Runner
+class TaskRunners {
+ public:
+  TaskRunners(std::string label,
+              fml::RefPtr<fml::TaskRunner> platform,
+              fml::RefPtr<fml::TaskRunner> raster,
+              fml::RefPtr<fml::TaskRunner> ui,
+              fml::RefPtr<fml::TaskRunner> io);
+
+  fml::RefPtr<fml::TaskRunner> GetPlatformTaskRunner() const;
+  fml::RefPtr<fml::TaskRunner> GetUITaskRunner() const;
+  fml::RefPtr<fml::TaskRunner> GetRasterTaskRunner() const;
+  fml::RefPtr<fml::TaskRunner> GetIOTaskRunner() const;
+
+ private:
+  fml::RefPtr<fml::TaskRunner> platform_;  // 플랫폼 채널
+  fml::RefPtr<fml::TaskRunner> raster_;    // GPU 래스터화
+  fml::RefPtr<fml::TaskRunner> ui_;        // Dart Isolate
+  fml::RefPtr<fml::TaskRunner> io_;        // 이미지 디코딩/파일 I/O
+};
+```
+
+각 스레드의 역할:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Platform Thread (= OS 메인 스레드)                          │
+│  • 플랫폼 채널(MethodChannel) 호출 수신/응답                  │
+│  • OS 이벤트(라이프사이클, 입력 이벤트) 수신                   │
+│  • 네이티브 플러그인 코드 실행                                │
+│  ⚠️ 여기서 무거운 작업을 하면 OS가 앱을 종료(ANR/watchdog)     │
+├─────────────────────────────────────────────────────────────┤
+│  UI Thread (= Dart Isolate 스레드)                           │
+│  • Dart 이벤트 루프 실행 (microtask → event queue)            │
+│  • 위젯 build / layout / paint                              │
+│  • vsync 콜백(handleBeginFrame/handleDrawFrame) 실행          │
+│  • Animation ticker 실행                                     │
+│  ‣ 결과물: Layer Tree                                        │
+├─────────────────────────────────────────────────────────────┤
+│  Raster Thread (= GPU 스레드)                                │
+│  • UI Thread가 생성한 Layer Tree를 받아서 실제 래스터화         │
+│  • Skia/Impeller 명령어로 변환 → GPU에 전달                    │
+│  • UI Thread와 Pipeline으로 연결 (Producer-Consumer)           │
+│  ‣ UI Thread가 아무리 빨라도 여기서 병목이면 프레임 드롭         │
+├─────────────────────────────────────────────────────────────┤
+│  I/O Thread                                                  │
+│  • 이미지 디코딩 (네트워크/파일에서 읽은 이미지 → GPU 텍스처)    │
+│  • Raster Thread의 부하를 줄이기 위한 보조 스레드                │
+│  • GPU context를 공유하여 텍스처를 직접 업로드                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### vsync 시그널 → Dart 실행의 전체 흐름
+
+이 4개 스레드가 어떻게 협력하여 한 프레임을 만드는지 추적한다.
+
+> 📁 `_sources/flutter/engine/src/flutter/shell/common/animator.cc`
+
+**Step 1**: Dart 코드에서 `setState()` 등으로 리빌드가 필요하면 `scheduleFrame()`을 호출한다. 이는 엔진의 `Animator::RequestFrame()`을 트리거한다.
+
+```cpp
+// animator.cc — Line 239~271
+void Animator::RequestFrame(bool regenerate_layer_trees) {
+  // ...
+  // VsyncWaiter에 "다음 vsync 때 깨워줘" 요청을 등록
+  // 이 요청 자체도 UI Task Runner에서 실행됨
+  task_runners_.GetUITaskRunner()->PostTask(
+      [self = weak_factory_.GetWeakPtr()]() {
+        if (!self) return;
+        self->AwaitVSync();  // Step 2로
+      });
+  frame_scheduled_ = true;
+}
+```
+
+**Step 2**: `AwaitVSync()`이 호출되면, 플랫폼별 `VsyncWaiter`가 OS의 vsync 시그널을 기다린다. 시그널이 오면 콜백을 **UI Task Runner에 post**한다.
+
+```cpp
+// animator.cc — Line 273~289
+void Animator::AwaitVSync() {
+  waiter_->AsyncWaitForVsync(
+      [self = weak_factory_.GetWeakPtr()](
+          std::unique_ptr<FrameTimingsRecorder> frame_timings_recorder) {
+        if (self) {
+          if (self->CanReuseLastLayerTrees()) {
+            self->DrawLastLayerTrees(std::move(frame_timings_recorder));
+          } else {
+            self->BeginFrame(std::move(frame_timings_recorder)); // Step 3으로
+            self->EndFrame();
+          }
+        }
+      });
+}
+```
+
+**Step 3**: `BeginFrame()`이 UI 스레드에서 실행된다. 여기서 Dart 쪽의 `handleBeginFrame`/`handleDrawFrame`을 호출한다.
+
+```cpp
+// animator.cc — Line 61~119
+void Animator::BeginFrame(
+    std::unique_ptr<FrameTimingsRecorder> frame_timings_recorder) {
+  // ...
+  frame_timings_recorder_->RecordBuildStart(fml::TimePoint::Now());
+  
+  // Dart의 handleBeginFrame → handleDrawFrame 실행
+  // 이 안에서 build() → layout() → paint() 전체가 실행됨
+  delegate_.OnAnimatorBeginFrame(frame_target_time, frame_number);
+}
+```
+
+**Step 4**: `EndFrame()`에서 생성된 Layer Tree를 `FramePipeline`에 넣으면, **Raster 스레드**가 꺼내서 래스터화한다.
+
+```cpp
+// animator.cc — Line 121~155
+void Animator::EndFrame() {
+  // Layer Tree를 파이프라인에 커밋
+  PipelineProduceResult result = producer_continuation_.Complete(
+      std::make_unique<FrameItem>(
+          std::move(layer_tree_task_list),
+          std::move(frame_timings_recorder_)));
+  
+  if (result.is_first_item) {
+    // Raster 스레드에 "새 Layer Tree 있으니 래스터화해" 통보
+    delegate_.OnAnimatorDraw(layer_tree_pipeline_);
+  }
+}
+```
+
+### 전체 타임라인
+
+```
+시간 → ─────────────────────────────────────────────────────────→
+
+[vsync 1]                           [vsync 2]
+    ↓                                   ↓
+UI Thread:
+    ├─ BeginFrame ──────────────────┤   ├─ BeginFrame ─────┤
+    │   handleBeginFrame (animation) │   │                  │
+    │   handleDrawFrame:             │   │                  │
+    │     build()                    │   │                  │
+    │     layout()                   │   │                  │
+    │     paint() → Layer Tree       │   │                  │
+    ├─ EndFrame ────────────────────┤   ├─ EndFrame ───────┤
+    │         ↓ Pipeline에 전달      │   │
+    │   ★ 빈 시간: 다른 이벤트 처리   │   │
+    │   (Timer, I/O 콜백, 터치 등)   │   │
+    ├───────────────────────────────┤   ├──────────────────┤
+
+Raster Thread:
+              ├─ 래스터화 ──────────┤
+              │  Layer Tree → GPU   │
+              │  Skia/Impeller 변환  │
+              ├─────────────────────┤
+```
+
+### 왜 이 구조를 알아야 하는가?
+
+이 스레드 구조를 모르면 다음 혼동이 발생한다:
+
+| 오해 | 실제 |
+|------|------|
+| "렌더링은 엔진에서 별도로 돌아간다" | **build/layout/paint는 UI 스레드에서 실행**. Raster 스레드는 그 결과물(Layer Tree)만 받는다 |
+| "Isolate를 쓰면 렌더링이 안 멈춘다" | Isolate는 별도 스레드를 쓰지만, **UI 스레드의 부하만 줄여주는 것**. Raster 스레드 병목은 해결 못 함 |
+| "microtask가 많아도 엔진이 알아서 렌더링한다" | vsync 콜백도 event queue 이벤트이므로, **microtask가 끝나야 처리됨** |
+| "jank은 항상 build가 느려서 생긴다" | Raster 스레드 병목(복잡한 shader, 과도한 saveLayer 등)으로도 발생한다. DevTools의 **Frame Rendering Chart**에서 UI vs Raster 시간을 분리 확인해야 한다 |
+
+### 면접 Q: "Flutter는 싱글 스레드인가?"
+
+> **"Dart 코드는 싱글 스레드(UI Thread)에서 실행된다. 하지만 Flutter 엔진 전체는 4개 스레드(Platform, UI, Raster, I/O)로 구성된다. UI 스레드에서 build/layout/paint를 실행한 결과(Layer Tree)를 Raster 스레드가 래스터화하는 Producer-Consumer 구조이며, I/O 스레드는 이미지 디코딩 등 무거운 I/O를 분담한다. 추가 병렬 처리가 필요하면 Dart Isolate를 생성하여 별도 UI 스레드에서 연산할 수 있다."**
+
+---
+
+## 4.13 Isolate — 진정한 병렬
 
 ### 언제 Isolate가 필요한가?
 
@@ -644,9 +926,9 @@ final result = await Isolate.run(() {
 });
 ```
 
-### 🔑 Isolate 간 데이터 전달 — 무엇이, 왜 되고 안 되는가?
+### Isolate 간 데이터 전달 — 무엇이, 왜 되고 안 되는가?
 
-Isolate의 핵심 설계 원칙은 **"메모리를 공유하지 않는다"**입니다. 각 Isolate는 자신만의 **독립된 힙(heap)**을 가집니다. 따라서 데이터를 전달하려면 반드시 **직렬화 → 복사 → 역직렬화** 과정을 거쳐야 합니다.
+Isolate의 핵심 설계 원칙은 **"메모리를 공유하지 않는다"**이다. 각 Isolate는 자신만의 **독립된 힙(heap)**을 가진다. 따라서 데이터를 전달하려면 반드시 **직렬화 → 복사 → 역직렬화** 과정을 거쳐야 한다.
 
 > 📁 `_sources/dart-sdk/sdk/lib/isolate/isolate.dart` — `SendPort.send()` (Line 846~905)
 
@@ -744,7 +1026,7 @@ port.send(bytes);  // → zero-copy 전송
 
 ##### 탄생 배경 — 왜 필요했는가?
 
-Isolate 간 데이터 전달의 기본 메커니즘은 **직렬화-복사**입니다. 텍스트 JSON이나 작은 객체에는 문제없지만, **바이너리 데이터**에서는 치명적인 성능 병목이 됩니다:
+Isolate 간 데이터 전달의 기본 메커니즘은 **직렬화-복사**다. 텍스트 JSON이나 작은 객체에는 문제없지만, **바이너리 데이터**에서는 치명적인 성능 병목이 된다:
 
 ```dart
 // ❌ 기존 방식의 문제
@@ -756,7 +1038,7 @@ final Uint8List processedImage = await Isolate.run(() {
 // → 복사 시간 + 메모리 2배 사용 (원본 + 사본이 일시 공존)
 ```
 
-이 문제를 해결하기 위해 **Dart 2.3.2** (2019년)에 `TransferableTypedData`가 도입되었습니다. 핵심 아이디어는 시스템 프로그래밍 언어인 **Rust의 소유권(ownership) 모델**에서 차용했습니다.
+이 문제를 해결하기 위해 **Dart 2.3.2** (2019년)에 `TransferableTypedData`가 도입되었다. 핵심 아이디어는 시스템 프로그래밍 언어인 **Rust의 소유권(ownership) 모델**에서 차용했다.
 
 ##### 설계 철학 — Move Semantics (이동 의미론)
 
@@ -776,7 +1058,7 @@ final Uint8List processedImage = await Isolate.run(() {
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-**핵심 원칙**: `TransferableTypedData`는 **한 번에 하나의 Isolate만 소유**할 수 있습니다:
+**핵심 원칙**: `TransferableTypedData`는 **한 번에 하나의 Isolate만 소유**할 수 있다:
 
 ```dart
 /// The [TransferableTypedData] is a cross-isolate single-use resource.
@@ -785,7 +1067,7 @@ final Uint8List processedImage = await Isolate.run(() {
 ByteBuffer materialize();
 ```
 
-이것이 Rust의 `ownership`과 같습니다 — 값을 "이동(move)"하면 원래 소유자는 더 이상 접근할 수 없습니다.
+이것이 Rust의 `ownership`과 같다 — 값을 "이동(move)"하면 원래 소유자는 더 이상 접근할 수 없다.
 
 ##### API 라이프사이클 — 4단계
 
@@ -898,7 +1180,7 @@ final result = await Isolate.run(() {
 | 대상 데이터 | `TypedData`만 (바이너리) | **모든 sendable 객체** |
 | API 복잡도 | 높음 (생성-전송-수신-실체화) | 낮음 (return만 하면 됨) |
 
-> **실무 가이드**: 대부분의 경우 `Isolate.run()` (내부적으로 `exit()` 사용)으로 충분합니다. `TransferableTypedData`가 필요한 경우는 **장기 실행 전용 Isolate**에서 **바이너리 데이터를 반복적으로 전송**할 때뿐입니다 — 예: 실시간 비디오 프레임 처리, 오디오 스트림 인코딩.
+> **실무 가이드**: 대부분의 경우 `Isolate.run()` (내부적으로 `exit()` 사용)으로 충분하다. `TransferableTypedData`가 필요한 경우는 **장기 실행 전용 Isolate**에서 **바이너리 데이터를 반복적으로 전송**할 때뿐이다 — 예: 실시간 비디오 프레임 처리, 오디오 스트림 인코딩.
 
 ##### Flutter 실무 패턴 — 이미지 처리 파이프라인
 
@@ -982,7 +1264,7 @@ static Future<R> run<R>(FutureOr<R> computation(), {String? debugName}) {
 // → 종료되는 Isolate의 힙 메모리를 직접 이전하므로 복사 불필요!
 ```
 
-> **왜 이게 중요한가?**: `Isolate.run()`으로 이미지를 처리하면, 결과 이미지 데이터가 **복사 없이** 메인 Isolate로 전달됩니다. 반면, `SendPort.send()`로 직접 보내면 **전체 데이터를 복사**합니다. 대용량 데이터를 다룬다면 이 차이가 성능에 큰 영향을 줍니다.
+> **왜 이게 중요한가?**: `Isolate.run()`으로 이미지를 처리하면, 결과 이미지 데이터가 **복사 없이** 메인 Isolate로 전달된다. 반면 `SendPort.send()`로 직접 보내면 **전체 데이터를 복사**한다. 대용량 데이터를 다룬다면 이 차이가 성능에 크게 영향을 준다.
 
 #### 클로저(Closure) 캡처 함정 — 왜 top-level 함수를 써야 하나?
 
@@ -1020,7 +1302,7 @@ Uint8List _processInIsolate(Uint8List data, int quality) {
 // 3. top-level/static → 캡처 대상 없음 → 인자만 직렬화하면 됨
 ```
 
-### Flutter의 `compute()` vs `Isolate.run()` — 무엇을 쓸까?
+## 4.14 Flutter의 `compute()` vs `Isolate.run()`
 
 ```dart
 // compute(): Flutter 프레임워크 제공 (foundation 패키지)
@@ -1049,7 +1331,7 @@ final result = await Isolate.run(() {
 });
 ```
 
-### Isolate vs async/await 선택 기준
+## 4.15 Isolate vs async/await 선택 기준
 
 | 작업 유형 | 해결 방법 | 예시 | WHY |
 |-----------|----------|------|-----|
@@ -1061,9 +1343,9 @@ final result = await Isolate.run(() {
 
 ---
 
-## ❌→✅ 안티패턴
+## 4.16 안티패턴
 
-### 1. 불필요한 `async` 마킹
+### 불필요한 `async` 마킹
 
 ```dart
 // ❌ Bad: 불필요한 async (Future 래핑만 추가)
@@ -1088,7 +1370,7 @@ Future<String> getName() async {
 }
 ```
 
-### 2. Future의 순차 실행 (병렬 가능할 때)
+### Future의 순차 실행 (병렬 가능할 때)
 
 ```dart
 // ❌ Bad: 순차 실행 — 총 3초 소요
@@ -1114,7 +1396,7 @@ Future<void> loadData() async {
 }
 ```
 
-### 3. Stream 리스너 미해제
+### Stream 리스너 미해제
 
 ```dart
 // ❌ Bad: StreamSubscription을 해제하지 않으면 메모리 누수
@@ -1150,7 +1432,7 @@ class _MyWidgetState extends State<MyWidget> {
 }
 ```
 
-### 4. 에러 핸들링 누락
+### 에러 핸들링 누락
 
 ```dart
 // ❌ Bad: 에러가 조용히 삼켜짐
@@ -1171,7 +1453,7 @@ try {
 
 ---
 
-## 💼 실무에서는
+## 4.17 실무 패턴
 
 ### API 호출 패턴
 
@@ -1225,35 +1507,35 @@ class SearchViewModel {
 
 ---
 
-## 🎯 면접 대비 Q&A
+## 4.18 면접 Q&A
 
 ### Q1. Dart의 이벤트 루프에서 Microtask와 Event의 차이를 설명하세요.
 
-**모범 답변**: Dart의 이벤트 루프에는 두 개의 큐가 있습니다. Microtask Queue는 `Future.then()`, `scheduleMicrotask()`, `async/await` 재개 등이 들어가며 우선순위가 높습니다. Event Queue는 `Timer`, I/O 이벤트, `Future()` 생성자의 콜백이 들어가며 우선순위가 낮습니다. 중요한 점은 이벤트 루프가 항상 Microtask Queue를 **완전히 비운 후에** Event Queue의 다음 이벤트를 처리한다는 것입니다. 따라서 Microtask에서 또 다른 Microtask를 무한히 스케줄하면 UI 이벤트가 처리되지 않아 화면이 멈춥니다.
+**모범 답변**: Dart의 이벤트 루프에는 두 개의 큐가 있다. Microtask Queue는 `Future.then()`, `scheduleMicrotask()`, `async/await` 재개 등이 들어가며 우선순위가 높다. Event Queue는 `Timer`, I/O 이벤트, `Future()` 생성자의 콜백이 들어가며 우선순위가 낮다. 중요한 점은 이벤트 루프가 항상 Microtask Queue를 **완전히 비운 후에** Event Queue의 다음 이벤트를 처리한다는 것이다. 그래서 Microtask에서 또 다른 Microtask를 무한히 스케줄하면 UI 이벤트가 처리되지 않아 화면이 멈춘다.
 
 ### Q2. `async/await`와 `.then()`의 내부적 차이는?
 
-**모범 답변**: 문법적으로는 `async/await`가 `.then()` 체이닝의 설탕이지만, 내부 구현은 다릅니다. `await`는 `_FutureListener`를 `stateThenAwait` 상태로 생성하여 VM이 특별하게 최적화합니다. 또한 `async` 함수는 **상태 머신**으로 변환되어, 각 `await` 지점이 상태 전환점이 됩니다. `.then()`은 각 콜백마다 새로운 클로저를 생성하므로, 연쇄 `.then()`은 중첩된 클로저 체인이 되는 반면, `async/await`는 단일 상태 머신으로 효율적입니다.
+**모범 답변**: 문법적으로는 `async/await`가 `.then()` 체이닝의 설탕이지만, 내부 구현은 다르다. `await`는 `_FutureListener`를 `stateThenAwait` 상태로 생성하여 VM이 특별하게 최적화한다. `async` 함수는 **상태 머신**으로 변환되어, 각 `await` 지점이 상태 전환점이 된다. `.then()`은 각 콜백마다 새 클로저를 생성하므로, 연쇄 `.then()`은 중첩된 클로저 체인이 되는 반면, `async/await`는 단일 상태 머신으로 동작한다.
 
 ### Q3. `Isolate`와 `async/await`는 각각 언제 사용하나요?
 
-**모범 답변**: `async/await`는 I/O 바운드 작업(네트워크 요청, 파일 읽기)에 사용합니다. 이런 작업은 실제로 Dart 스레드를 점유하지 않고 OS 수준에서 대기하므로 싱글 스레드로 충분합니다. `Isolate`는 CPU 바운드 작업(이미지 처리, 복잡한 JSON 파싱, 암호화)에 사용합니다. 이런 작업은 Dart 스레드를 직접 점유하여 16ms 프레임 예산을 초과할 수 있으므로 별도 스레드가 필요합니다. 기준은 "해당 작업이 프레임 드롭을 유발하는가"입니다.
+**모범 답변**: `async/await`는 I/O 바운드 작업(네트워크 요청, 파일 읽기)에 쓴다. 이런 작업은 실제로 Dart 스레드를 점유하지 않고 OS 수준에서 대기하므로 싱글 스레드로 충분하다. `Isolate`는 CPU 바운드 작업(이미지 처리, 복잡한 JSON 파싱, 암호화)에 쓴다. 이런 작업은 Dart 스레드를 직접 점유하여 16ms 프레임 예산을 초과할 수 있으므로 별도 스레드가 필요하다. 기준은 "해당 작업이 프레임 드롭을 유발하는가"다.
 
 ### Q4. Isolate 간 데이터 전달 시 어떤 타입이 전송 가능하고, 왜 일부 타입은 전송이 불가능한가요?
 
-**모범 답변**: Isolate는 독립된 힙 메모리를 가지므로, 데이터 전달은 본질적으로 **직렬화-복사-역직렬화** 과정입니다. `SendPort.send()`로 전송 가능한 타입은 원시 타입(`null`, `bool`, `int`, `double`, `String`), 컬렉션(`List`, `Map`, `Set` — 내부 요소도 sendable이어야 함), 사용자 정의 클래스(필드가 모두 sendable), 그리고 `SendPort`, `Capability`, `TransferableTypedData` 등 특수 타입입니다. 반면, `Socket`, 열린 `File`, `ReceivePort`, `DynamicLibrary`, `Finalizable` 등은 전송 불가합니다. 이유는 이들이 **OS 커널 수준의 리소스**(파일 디스크립터, 소켓 핸들) 또는 **특정 Isolate의 이벤트 루프/GC에 귀속된 자원**을 참조하기 때문입니다. 다른 힙으로 포인터를 복사해봤자 무의미합니다. 또한 불변 객체(`String`)는 메모리를 공유하고, 가변 객체(`List`)는 복사하며, `TransferableTypedData`는 소유권 이전(zero-copy)으로 대용량 바이너리를 효율적으로 전달합니다. `Isolate.run()`은 내부적으로 `Isolate.exit()`를 사용하여 결과를 **복사 없이** 전달하므로, 대용량 데이터를 주고받을 때는 `SendPort.send()`보다 유리합니다.
+**모범 답변**: Isolate는 독립된 힙 메모리를 가지므로, 데이터 전달은 **직렬화-복사-역직렬화** 과정이다. `SendPort.send()`로 전송 가능한 타입은 원시 타입(`null`, `bool`, `int`, `double`, `String`), 컬렉션(`List`, `Map`, `Set` — 내부 요소도 sendable이어야 함), 사용자 정의 클래스(필드가 모두 sendable), 그리고 `SendPort`, `Capability`, `TransferableTypedData` 등 특수 타입이다. 반면, `Socket`, 열린 `File`, `ReceivePort`, `DynamicLibrary`, `Finalizable` 등은 전송 불가다. 이들이 **OS 커널 수준의 리소스**(파일 디스크립터, 소켓 핸들) 또는 **특정 Isolate의 이벤트 루프/GC에 귀속된 자원**을 참조하기 때문이다. 다른 힙으로 포인터를 복사해봐야 무의미하다. 불변 객체(`String`)는 메모리를 공유하고, 가변 객체(`List`)는 복사하며, `TransferableTypedData`는 소유권 이전(zero-copy)으로 대용량 바이너리를 전달한다. `Isolate.run()`은 내부적으로 `Isolate.exit()`를 사용하여 결과를 **복사 없이** 전달하므로, 대용량 데이터를 주고받을 때는 `SendPort.send()`보다 유리하다.
 
 ### Q5. `async/await`와 `.then()`의 내부 구현 차이를 설명해주세요. "문법적 설탕(syntactic sugar)"이라고 말할 수 있나요?
 
-**모범 답변**: 흔히 "async/await은 .then()의 문법적 설탕"이라고 하지만, **내부 구현 경로가 완전히 다릅니다**. `.then()`은 매 호출마다 콜백을 Zone에 등록(`registerUnaryCallback`)하고, 새 `_FutureListener`와 `_Future`를 생성합니다. 반면 `await`는 `_thenAwait()`를 사용하여 **Zone 등록을 건너뜁니다** — 소스코드 주석에 "The system created listeners are not registered in the zone"이라고 명시되어 있습니다. 또한 `async` 함수는 VM 수준의 `_SuspendState`로 컴파일되어, 콜백을 한 번만 생성(`_createAsyncCallbacks`)하고 여러 `await` 지점에서 재사용합니다. 추가로 `_SuspendState._await()`는 3가지 fast path를 가집니다: (1) 이미 완료된 Future → 리스너 생성 자체를 건너뜀, (2) 내부 `_Future` → `_thenAwait()` 사용, (3) Future가 아닌 값 → 바로 마이크로태스크 스케줄. `maskAwait` 플래그(bit 16)는 VM이 스택 트레이스를 복원하는 데에도 사용됩니다. 결론적으로, 성능(콜백 재사용, Zone 생략), 디버깅(스택 트레이스), 메모리(단일 `_SuspendState`) 모든 측면에서 `async/await`가 유리하며, `.then()`은 fire-and-forget이나 동적 체이닝 같은 특수 상황에서만 적합합니다.
+**모범 답변**: 흔히 "async/await은 .then()의 문법적 설탕"이라고 하지만, **내부 구현 경로가 완전히 다르다**. `.then()`은 매 호출마다 콜백을 Zone에 등록(`registerUnaryCallback`)하고, 새 `_FutureListener`와 `_Future`를 생성한다. 반면 `await`는 `_thenAwait()`를 사용하여 **Zone 등록을 건너뛴다** — 소스코드 주석에 "The system created listeners are not registered in the zone"이라고 명시되어 있다. `async` 함수는 VM 수준의 `_SuspendState`로 컴파일되어, 콜백을 한 번만 생성(`_createAsyncCallbacks`)하고 여러 `await` 지점에서 재사용한다. `_SuspendState._await()`는 3가지 fast path를 가진다: (1) 이미 완료된 Future → 리스너 생성 자체를 건너뛴다, (2) 내부 `_Future` → `_thenAwait()` 사용, (3) Future가 아닌 값 → 바로 마이크로태스크 스케줄. `maskAwait` 플래그(bit 16)는 VM이 스택 트레이스를 복원하는 데에도 쓰인다. 결론적으로, 성능(콜백 재사용, Zone 생략), 디버깅(스택 트레이스), 메모리(단일 `_SuspendState`) 모든 측면에서 `async/await`가 유리하며, `.then()`은 fire-and-forget이나 동적 체이닝 같은 특수 상황에서만 적합하다.
 
 ### Q6. Zone이 Flutter에서 중요한 이유는?
 
-**모범 답변**: Zone은 비동기 작업의 실행 컨텍스트를 캡슐화합니다. Flutter에서는 크게 두 가지로 활용됩니다. 첫째, `runZonedGuarded`로 전역 에러 핸들러를 설정하여 처리되지 않은 비동기 에러를 Crashlytics 등에 보고할 수 있습니다. 둘째, Flutter 엔진 내부에서 `runZoned`를 사용하여 위젯 빌드 에러를 격리하고, 에러가 발생하더라도 앱 전체가 크래시되지 않도록 합니다. Zone의 계층 구조는 에러가 Zone 경계를 넘지 않도록 보장하여 에러 격리에 핵심적인 역할을 합니다.
+**모범 답변**: Zone은 비동기 작업의 실행 컨텍스트를 캡슐화한다. Flutter에서는 크게 두 가지로 쓴다. 첫째, `runZonedGuarded`로 전역 에러 핸들러를 설정하여 처리되지 않은 비동기 에러를 Crashlytics 등에 보고할 수 있다. 둘째, Flutter 엔진 내부에서 `runZoned`를 사용하여 위젯 빌드 에러를 격리하고, 에러가 나더라도 앱 전체가 크래시되지 않도록 한다. Zone의 계층 구조는 에러가 Zone 경계를 넘지 않도록 보장하여 에러 격리에 중요한 역할을 한다.
 
 ---
 
-## 📝 핵심 정리
+## 4.19 핵심 정리
 
 | 개념 | 핵심 포인트 |
 |------|-------------|

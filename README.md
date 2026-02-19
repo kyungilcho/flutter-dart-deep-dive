@@ -8,13 +8,13 @@
 
 ---
 
-## 📌 이 프로젝트는 무엇인가요?
+## 📌 이 프로젝트는 무엇인가?
 
-Flutter/Dart의 공식 문서에서 다루지 않는 **내부 동작 원리**를 소스코드 레벨에서 분석한 이론서입니다.
+Flutter/Dart의 공식 문서에서 다루지 않는 **내부 동작 원리**를 소스코드 레벨에서 분석한 이론서이다.
 
 - 🔍 **실제 소스코드 인용** — 추측이 아닌 코드 기반 설명
 - 🎯 **면접 Q&A** — 각 챕터마다 시니어급 면접 질문/답변 포함
-- 📊 **난이도 구분** — 🟢 기본 / 🟡 중급 / 🔴 심화로 단계적 학습
+- 📊 **단계적 학습** — 기본 → 중급 → 심화 순서로 구성
 
 ---
 
@@ -36,16 +36,16 @@ Flutter/Dart의 공식 문서에서 다루지 않는 **내부 동작 원리**를
 | 05 | [위젯 기초 — 불변성과 3-트리 아키텍처](part2_flutter/ch05_widget_fundamentals.md) | ✅ |
 | 06 | [State와 생명주기 — Element의 상태 머신](part2_flutter/ch06_state_lifecycle.md) | ✅ |
 | 07 | [BuildContext와 InheritedWidget — O(1) 의존성 주입](part2_flutter/ch07_buildcontext_inherited.md) | ✅ |
-| 08 | [레이아웃 시스템 — Constraints와 RenderObject](part2_flutter/ch08_layout_system.md) | ✅ |
+| 08 | [레이아웃 시스템과 RenderObject — 직접 다루기](part2_flutter/ch08_layout_system.md) | ✅ |
 | 09 | [렌더링 파이프라인 — VSync에서 GPU까지](part2_flutter/ch09_rendering_pipeline.md) | ✅ |
 
 ### Part 3. 상태 관리의 모든 것
 
 | Ch | 제목 | 상태 |
 |----|------|------|
-| 10 | Provider — InheritedWidget의 진화 | 📝 |
-| 11 | Riverpod — ProviderScope의 내부 | 📝 |
-| 12 | Bloc — Stream 기반 상태 관리 | 📝 |
+| 10 | [상태 관리, 왜 어려운가](part3_state_management/ch10_state_problem.md) | ✅ |
+| 11 | [Provider → Riverpod — 무엇이 달라졌는가](part3_state_management/ch11_provider_vs_riverpod.md) | ✅ |
+| 12 | [Riverpod Generator — 빌드 타임 코드 생성](part3_state_management/ch12_riverpod_generator.md) | ✅ |
 
 ### Part 4. 아키텍처와 설계 패턴
 
@@ -76,22 +76,12 @@ Flutter/Dart의 공식 문서에서 다루지 않는 **내부 동작 원리**를
 
 ---
 
-## 🏷️ 난이도 표시
-
-각 챕터 내 섹션은 난이도로 구분됩니다:
-
-- 🟢 **기본** — 다른 언어 경험자가 바로 이해 가능
-- 🟡 **중급** — 실무 적용 수준, 주요 API와 패턴
-- 🔴 **심화** — 내부 소스코드 분석, 엣지 케이스, 최적화
-
----
-
 ## 📁 소스코드 분석 대상
 
-이 프로젝트에서 분석하는 소스코드들입니다. 로컬에서 참고하려면 별도로 클론해주세요.
+이 프로젝트에서 분석하는 소스코드 목록이다. 로컬에서 참고하려면 별도로 클론이 필요하다.
 
 | 저장소 | 버전/태그 | 분석 대상 |
-|--------|-----------|-----------| 
+|--------|-----------|-----------|
 | `flutter/flutter` | 3.41.1 | 프레임워크 핵심 (`packages/flutter/`) |
 | `flutter/engine` | latest | Impeller 렌더링 엔진 (`impeller/`) |
 | `dart-lang/sdk` | latest | Dart 언어 내부 (`sdk/lib/`) |
@@ -105,4 +95,4 @@ Flutter/Dart의 공식 문서에서 다루지 않는 **내부 동작 원리**를
 
 ## 📜 License
 
-MIT License — 자유롭게 참고하고 활용하세요.
+MIT License — 자유롭게 참고하고 활용할 수 있다.
