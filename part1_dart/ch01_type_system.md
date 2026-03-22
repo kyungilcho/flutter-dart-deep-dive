@@ -2,7 +2,7 @@
 
 ## 1.1 모든 것은 객체다
 
-Dart에서는 숫자, 문자열, 함수, `null`까지 **모든 것이 객체**다. JavaScript도 비슷하지만 Dart는 여기에 **정적 타입 시스템**을 결합했다. 이 설계 결정이 Dart의 타입 계층 전체를 결정짓는다.
+Dart에서는 숫자, 문자열, 함수, `null`까지 모든 것이 객체다. JavaScript도 비슷하지만 Dart는 여기에 정적 타입 시스템을 결합했다. 이 설계가 Dart의 타입 계층 전체를 지배한다.
 
 ```dart
 // Dart: 모든 값은 객체
@@ -109,18 +109,16 @@ graph TD
 
 ## 1.5 `Object`와 `Null`은 형제다
 
-Dart Null Safety의 타입 이론적 기반이 여기에 있다. `Object`와 `Null`을 **별도의 가지**로 분리한 설계다.
+Dart Null Safety의 뿌리가 여기에 있다. `Object`와 `Null`을 별도의 가지로 분리한 것이다.
 
-- `Object` = 모든 non-nullable 타입의 최상위
-- `Null` = `null` 값의 타입 (`Object`를 **구현하지 않음**)
-- `Object?` = `Object | Null` (이 둘의 합집합)
+`Object`는 모든 non-nullable 타입의 최상위, `Null`은 `null` 값의 타입으로 `Object`를 구현하지 않는다. `Object?`는 이 둘의 합집합(`Object | Null`)이다.
 
 ### 소스코드로 확인
 
 > 📁 `_sources/dart-sdk/sdk/lib/core/object.dart`
 > 📁 `_sources/dart-sdk/sdk/lib/core/null.dart`
 
-**object.dart** (7~11행):
+**object.dart** (7~11행은 doc comment, class 정의는 19행~):
 
 ```dart
 /// The base class for all Dart objects except `null`.
@@ -138,7 +136,7 @@ class Object {
 }
 ```
 
-**null.dart** (7~12행):
+**null.dart** (7~12행은 doc comment, class 정의는 24행~):
 
 ```dart
 /// The reserved word `null` denotes an object that is the sole instance of
@@ -156,11 +154,11 @@ final class Null {
 }
 ```
 
-`Null` 클래스는 `Object`를 **상속하지 않는다**. 우연이 아니라 의도적인 설계다. 이 분리 덕분에 `String`과 `String?`이 타입 수준에서 완전히 다른 것이 된다.
+`Null` 클래스는 `Object`를 상속하지 않는다. 우연이 아니다. 이 분리 덕분에 `String`과 `String?`이 타입 수준에서 완전히 다른 것이 된다.
 
 ## 1.6 `dynamic` vs `Object` vs `Object?`
 
-이 세 가지는 모두 "어떤 값이든 담을 수 있다"는 점에서 비슷해 보이지만, 타입 시스템에서의 역할이 근본적으로 다르다:
+이 세 가지는 모두 "어떤 값이든 담을 수 있다"는 점에서 비슷해 보이지만, 타입 시스템에서 하는 역할이 전혀 다르다:
 
 ```dart
 // Object: non-nullable 최상위. 모든 메서드를 안전하게 호출 가능
@@ -168,10 +166,12 @@ Object obj = 'hello';
 print(obj.toString());     // ✅ 항상 안전
 // print(obj.length);       // ❌ 컴파일 에러: Object에 length 없음
 
-// Object?: nullable 최상위. null 체크 필요
+// Object?: nullable 최상위. null 체크가 필요한 메서드가 있다
 Object? maybeObj = null;
-// print(maybeObj.toString()); // ❌ 경고: null일 수 있음
-print(maybeObj?.toString());   // ✅ null-safe 호출
+print(maybeObj.toString());    // ✅ OK — toString()은 Null에도 정의되어 있다
+print(maybeObj.hashCode);      // ✅ OK — hashCode도 마찬가지
+// print(maybeObj.runtimeType); // ❌ 경고: runtimeType은 Object에만 있고 Null에는 없다
+print(maybeObj?.runtimeType);  // ✅ null-safe 호출
 
 // dynamic: 타입 검사 자체를 꺼버림
 dynamic anything = 'hello';
@@ -261,7 +261,7 @@ class InvocationTargetDynamicType extends InvocationTargetNonFunctionType {
 
 이것이 `Object`와의 결정적 차이다. `Object obj`에 `.length`를 호출하면 컴파일러가 `_resolveReceiverType()`에서 "Object에 length 멤버가 없다"는 에러를 낸다. `dynamic d`에 `.length`를 호출하면 `_resolveReceiverDynamicBounded()`에서 그냥 `dynamic`으로 통과시킨다.
 
-`dynamic`을 쓰는 것은 타입 시스템의 보호를 **자발적으로 포기**하는 것이다. JSON 파싱 등 불가피한 경우를 제외하면 `Object` 또는 `Object?`를 써야 한다.
+`dynamic`을 쓰는 것은 타입 시스템의 보호를 스스로 걷어차는 것이다. JSON 파싱 등 불가피한 경우를 제외하면 `Object` 또는 `Object?`를 쓰자.
 
 ## 1.7 `Never` — 타입 계층의 바닥
 
@@ -310,7 +310,8 @@ class User {
   void printName() {
     if (name != null) {
       // ❌ 여전히 String? — 왜?
-      // 다른 스레드가 name을 null로 바꿀 수 있기 때문
+      // 서브클래스가 name을 getter로 오버라이드하면
+      // 호출할 때마다 다른 값(null 포함)을 반환할 수 있기 때문
       // print(name.length); // 에러!
 
       // ✅ 해결: 로컬 변수에 복사
@@ -326,7 +327,11 @@ class User {
 }
 ```
 
-인스턴스 필드에서 흐름 분석이 작동하지 않는 이유가 여기 있다. 필드는 getter로 구현될 수 있고, 호출할 때마다 다른 값을 반환할 수 있다. 컴파일러는 이를 보수적으로 판단한다. 로컬 변수는 이런 문제가 없으므로 승격이 가능하다.
+인스턴스 필드에서 흐름 분석이 작동하지 않는 이유가 여기 있다. 필드는 서브클래스에서 getter로 오버라이드될 수 있고, getter는 호출할 때마다 다른 값을 반환할 수 있다. 컴파일러는 이를 보수적으로 판단한다. 로컬 변수는 외부에서 변경될 수 없으므로 승격이 가능하다.
+
+> 흔한 오해: "다른 스레드가 값을 바꿀 수 있어서" 필드 승격이 안 된다고 설명하는 글이 많은데, Dart는 isolate 기반 단일 스레드 모델이므로 이 설명은 틀렸다. 진짜 이유는 위에서 말한 **getter 오버라이드 가능성**이다.
+
+**Dart 3.2 업데이트**: Dart 3.2(2023년 11월)부터 **private final 필드**에 대한 프로모션이 가능해졌다. `final String? _name`처럼 private이고 final이면, 외부에서 setter로 변경하거나 getter로 오버라이드할 수 없다는 것을 컴파일러가 증명할 수 있기 때문이다. 위 예시의 `String? name`은 public이고 non-final이므로 여전히 프로모션되지 않는다.
 
 ## 1.10 `late` 키워드의 진짜 의미
 
@@ -368,7 +373,7 @@ const String lateLocalSetterSuffix = '#set';   // setter: #originalName#set
 
 즉, `late String description;`을 선언하면 실제로는 `_#description`이라는 숨겨진 필드와 합성된 getter/setter가 생성된다.
 
-**핵심은 "초기화 여부를 어떻게 추적하는가"에 세 가지 전략이 존재한다는 것이다:**
+그런데 "초기화 여부를 어떻게 추적하는가"에 세 가지 전략이 존재한다:
 
 ```dart
 // late_lowering.dart (512~522행)
@@ -547,7 +552,7 @@ __ BranchIf(NOT_EQUAL, &no_call);
 - **분기 예측(branch prediction)**: 초기화 이후에는 분기가 항상 "not taken"이므로 CPU의 분기 예측기가 거의 100% 정확하게 예측한다. 예측이 맞으면 파이프라인 스톨 없이 실행된다.
 - **Slow path 분리**: 에러를 던지거나 초기화 함수를 호출하는 코드는 `LateInitializationErrorSlowPath`로 out-of-line에 배치된다. 핫 패스(정상 접근 경로)의 코드 크기를 최소화하여 명령 캐시 효율을 유지한다.
 
-**백엔드별 처리 방식의 차이**도 주목할 만하다. `targets.dart`의 `LateLowering` 클래스는 `late` 변수를 16가지 카테고리(nullable/non-nullable × initialized/uninitialized × final/non-final × local/static/instance)로 분류하고, 각 백엔드가 비트마스크(`enabledLateLowerings`)로 "CFE가 lowering할 것"과 "백엔드(VM)가 자체적으로 직접 처리할 것"을 선택하게 한다:
+백엔드별 처리 방식의 차이도 있다. `targets.dart`의 `LateLowering` 클래스는 `late` 변수를 16가지 카테고리(nullable/non-nullable × initialized/uninitialized × final/non-final × local/static/instance)로 분류하고, 각 백엔드가 비트마스크(`enabledLateLowerings`)로 "CFE가 lowering할 것"과 "백엔드(VM)가 자체적으로 직접 처리할 것"을 선택하게 한다:
 
 > 📁 `pkg/kernel/lib/target/targets.dart` — `LateLowering` (627~717행)
 
@@ -563,7 +568,7 @@ class LateLowering {
 
 Dart VM은 `late` 필드를 **VM 수준에서 직접 내장 처리**한다(`enabledLateLowerings`에서 필드 관련 비트를 켜지 않음). 즉 CFE가 getter/setter Dart 코드를 합성하는 대신, VM 컴파일러가 IL → 기계어 변환 단계에서 `CompareObject(result, Object::sentinel())` 명령을 직접 삽입한다. 이 방식이 CFE lowering보다 효율적인 이유는 VM이 필드 테이블에서 바로 sentinel을 비교하므로 중간 함수 호출 오버헤드가 없기 때문이다.
 
-**AOT 컴파일러의 추가 최적화**도 있다. VM의 최적화 파이프라인에는 sentinel 관련 최적화 패스가 포함된다:
+AOT 컴파일러는 여기서 더 나간다. VM의 최적화 파이프라인에 sentinel 관련 패스가 포함되어 있다:
 
 - **상수 전파(Constant Propagation)**: sentinel 비교가 상수 폴딩 가능하면 제거 (`constant_propagator.cc`)
 - **타입 전파(Type Propagation)**: `CompileType`이 `can_be_sentinel()` 플래그를 추적하여 "이 값은 sentinel일 수 없음"이 증명되면 검사 자체를 제거 (`type_propagator.cc`)
@@ -571,7 +576,7 @@ Dart VM은 `late` 필드를 **VM 수준에서 직접 내장 처리**한다(`enab
 
 따라서 AOT 빌드(`-O4`)에서는 초기화가 정적으로 증명 가능한 경우 sentinel 검사가 **완전히 제거**될 수 있다.
 
-실용적 판단 기준은 다음과 같다:
+그래서 언제 쓰고 언제 피해야 하는가:
 
 | 상황 | `late` 적절성 | 이유 |
 |---|---|---|
@@ -718,7 +723,7 @@ print(numbers is List<String>); // false ← 런타임에 구분 가능!
 // Java: List<Integer>와 List<String>은 런타임에 구분 불가
 ```
 
-이 차이는 단순한 편의가 아니라, VM 아키텍처 수준의 근본적인 설계 차이에서 비롯된다.
+이 차이는 단순한 편의가 아니다. VM 아키텍처 수준에서 설계가 다르기 때문에 생기는 것이다.
 
 ### Java의 Type Erasure: 왜 지우는가?
 
@@ -793,7 +798,7 @@ intptr_t host_type_arguments_field_offset() const {
 > 📁 `runtime/vm/object.h` — `SubtypeTestCache` (8005~8011행)
 
 ```cpp
-enum Inputs {
+enum Entries {
   kInstanceCidOrSignature = 0,     // 인스턴스의 Class ID
   kInstanceTypeArguments = 1,       // ← 인스턴스가 가진 타입 인자 (핵심!)
   kInstantiatorTypeArguments = 2,
@@ -853,7 +858,7 @@ nums.add(3.14);  // 컴파일 OK, 런타임에 TypeError!
 
 1. **실용성 우선**: 불변 제네릭은 `List<int>`를 `List<num>`에 할당할 수 없어 API 작성이 번거롭다. 실제로 대부분의 코드에서 `List<int>`를 `List<num>`으로 넘기는 것은 읽기 전용으로 사용하므로 안전하다.
 
-2. **런타임 안전망**: 컴파일 타임에는 허용하되, **런타임에 타입 체크를 삽입**하여 실제 위반 시 즉시 `TypeError`를 던진다. 이것이 가능한 이유가 바로 **Reified Generics** — 런타임에 타입 인자를 알고 있기 때문이다.
+2. **런타임 안전망**: 컴파일 타임에는 허용하되, **런타임에 타입 체크를 삽입**하여 실제 위반 시 즉시 `TypeError`를 던진다. 이것이 가능한 이유가 바로 Reified Generics다. 런타임에 타입 인자를 알고 있으니까.
 
 ### 런타임 체크의 실체: `AssertAssignable`
 
@@ -885,7 +890,7 @@ class Cat extends Animal {
 }
 ```
 
-`covariant`는 개발자가 **"이 파라미터의 타입을 서브타입으로 좁히겠다, 런타임 체크를 삽입해달라"**고 컴파일러에 명시하는 것이다. 이 키워드 없이 파라미터 타입을 좁히면 `invalid_override` 에러가 발생한다.
+`covariant`는 개발자가 "이 파라미터의 타입을 서브타입으로 좁히겠다, 런타임 체크를 삽입해달라"고 컴파일러에 명시하는 것이다. 이 키워드 없이 파라미터 타입을 좁히면 `invalid_override` 에러가 발생한다.
 
 내부적으로 `covariant`가 붙은 파라미터에는 추가 `AssertAssignable` 체크가 생성된다:
 
@@ -905,7 +910,7 @@ Cat.chase(other) {
 | **Dart** | 공변 (covariant) | 런타임 체크 | 실용적, Reified |
 | **Java** | 불변 + 와일드카드 | 컴파일 타임 | `? extends T`, `? super T` |
 | **Kotlin** | 선언 위치 분산 | 컴파일 타임 | `out T`, `in T` |
-| **TypeScript** | 공변 (bivariant) | unsafe | 타입 소거 |
+| **TypeScript** | 구조적 공변 (structural covariant) | unsafe | 타입 소거 |
 | **Swift** | 불변 (invariant) | 컴파일 타임 (sound) | 프로토콜 + 연관 타입 |
 
 ---
@@ -1060,7 +1065,7 @@ void check(Animal a) {
 }
 ```
 
-`runtimeType`은 반환값이 `Type` 객체이므로, 어떤 타입이든 비교 대상이 될 수 있다. AOT 컴파일러는 **어느 타입 메타데이터가 필요할지 예측할 수 없어**, 모든 관련 타입 정보를 보존해야 한다. 이는 바이너리 크기와 직결된다.
+`runtimeType`의 반환값은 `Type` 객체이므로, 어떤 타입이든 비교 대상이 될 수 있다. AOT 컴파일러 입장에서는 어느 타입 메타데이터가 필요할지 예측이 안 되니, 모든 관련 타입 정보를 남겨둘 수밖에 없다. 바이너리 크기가 커진다.
 
 ### Dart 3 패턴 매칭: 더 좋은 대안
 
@@ -1082,7 +1087,7 @@ String describe(Object obj) => switch (obj) {
 };
 ```
 
-패턴 매칭은 `is` 연산자와 동일한 경로(`_instanceOf`)를 사용하면서, **변수 바인딩까지 자동으로 처리**한다. `runtimeType`이 필요한 유일한 합법적 용도는 `toString()` 오버라이드뿐이다:
+패턴 매칭은 `is` 연산자와 동일한 경로(`_instanceOf`)를 사용하면서 변수 바인딩까지 자동으로 처리한다. `runtimeType`이 필요한 거의 유일한 용도는 `toString()` 오버라이드다:
 
 ```dart
 class MyWidget {
@@ -1247,7 +1252,7 @@ class DataList<T> extends StatelessWidget {
 
 > **꼬리질문**: Reified Generics의 성능 비용은 무엇인가요?
 >
-> **답변**: 세 가지 비용이 있다. 첫째, 제네릭 인스턴스마다 `TypeArguments` 포인터 1워드가 추가된다(메모리). 둘째, `is`/`as` 연산 시 타입 인자까지 비교해야 한다(CPU). 셋째, 인스턴스 생성 시 타입 인자를 전달·저장해야 한다(생성 비용). 하지만 VM은 동일한 타입 인자를 하나의 `TypeArguments` 객체로 공유(캐노니컬라이즈)하고, `SubtypeTestCache`로 반복 검사를 캐싱하며, AOT에서 컴파일 타임에 타입이 확정되면 런타임 체크를 완전히 제거하여 최적화한다.
+> **답변**: 제네릭 인스턴스마다 `TypeArguments` 포인터 1워드가 추가되고(메모리), `is`/`as` 연산 시 타입 인자까지 비교해야 하며(CPU), 인스턴스 생성 시 타입 인자를 전달·저장하는 비용도 있다. 다만 VM이 이걸 그냥 두지는 않는다. 동일한 타입 인자를 하나의 `TypeArguments` 객체로 공유(캐노니컬라이즈)하고, `SubtypeTestCache`로 반복 검사를 캐싱하며, AOT에서 컴파일 타임에 타입이 확정되면 런타임 체크를 아예 제거한다.
 
 ### Q6. Dart의 제네릭 공변성(covariance)이 unsound한 이유와 이를 허용한 설계 의도를 설명하세요.
 
@@ -1259,7 +1264,7 @@ class DataList<T> extends StatelessWidget {
 
 ### Q7. `runtimeType`을 프로덕션 코드에서 타입 체크에 사용하면 안 되는 이유를 설명하세요.
 
-**모범 답변**: 세 가지 이유가 있다. 첫째, `runtimeType`은 **정확한 타입만 매칭**하므로 서브타입 관계를 무시한다. `is`는 상속 계층을 따라 서브타입도 매칭한다. 둘째, **성능 차이**가 크다. `runtimeType`은 VM 내부에서 `Object_runtimeType` C++ 네이티브 함수를 호출하여 `_Type` 객체를 생성/룩업하고, 비교는 `Type_equality` 네이티브 함수를 거친다. 반면 `is`는 `_simpleInstanceOf` → `SubtypeTestCache`를 통해 Type 객체 생성 없이 Class ID와 TypeArguments를 직접 비교하며 캐시 히트 시 O(1)이다. 셋째, **AOT tree-shaking을 방해**한다. `runtimeType`은 어떤 타입이든 비교 대상이 될 수 있어 AOT 컴파일러가 필요한 타입 메타데이터를 예측할 수 없고, 모든 관련 타입 정보를 보존해야 한다. 이는 바이너리 크기 증가로 이어진다.
+**모범 답변**: 가장 큰 문제는 `runtimeType`이 정확한 타입만 매칭해서 서브타입 관계를 무시한다는 것이다. `is`는 상속 계층을 따라 서브타입도 매칭한다. 성능 차이도 크다. `runtimeType`은 VM 내부에서 `Object_runtimeType` C++ 네이티브 함수를 호출하여 `_Type` 객체를 생성/룩업하고, 비교는 `Type_equality` 네이티브 함수를 거친다. 반면 `is`는 `_simpleInstanceOf` → `SubtypeTestCache`를 통해 Type 객체 생성 없이 Class ID와 TypeArguments를 직접 비교하며 캐시 히트 시 O(1)이다. 덤으로 AOT tree-shaking도 방해한다. `runtimeType`은 어떤 타입이든 비교 대상이 될 수 있어 AOT 컴파일러가 필요한 타입 메타데이터를 예측할 수 없고, 모든 관련 타입 정보를 보존해야 한다. 바이너리 크기가 커진다.
 
 > **꼬리질문**: `runtimeType`의 합법적인 사용 사례는 무엇인가요?
 >
@@ -1267,11 +1272,11 @@ class DataList<T> extends StatelessWidget {
 
 ### Q8. Dart 3의 패턴 매칭이 기존 `is` + `as` 조합보다 나은 점은?
 
-**모범 답변**: 패턴 매칭은 세 가지 작업 — **타입 체크, 타입 캐스트, 변수 바인딩** — 을 하나의 구문으로 통합한다. 기존에는 `if (obj is int) { final n = obj; }` 처럼 스마트 캐스트에 의존하거나:  `final n = obj as int;`로 명시적 캐스트를 해야 했다. 패턴 매칭은 `switch (obj) { int n => n.isEven }` 하나로 해결되며, 내부적으로 `is`와 동일한 `_instanceOf` 경로를 사용하므로 성능 손실이 없다. 또한 `sealed class`와 결합하면 컴파일러가 **exhaustiveness check(완전성 검사)**를 수행하여 누락된 케이스를 컴파일 에러로 잡아준다. 1.11에서 본 `num`이 `sealed class`인 이유가 바로 이것이다 — `int`와 `double`만 존재함을 컴파일 타임에 보장하므로, `switch (value) { int n => ..., double d => ... }`에서 `default` 없이도 완전성이 보장된다.
+**모범 답변**: 패턴 매칭은 타입 체크, 타입 캐스트, 변수 바인딩을 하나의 구문으로 합쳐버린다. 기존에는 `if (obj is int) { final n = obj; }` 처럼 스마트 캐스트에 의존하거나:  `final n = obj as int;`로 명시적 캐스트를 해야 했다. 패턴 매칭은 `switch (obj) { int n => n.isEven }` 하나로 해결되며, 내부적으로 `is`와 동일한 `_instanceOf` 경로를 사용하므로 성능 손실이 없다. 또한 `sealed class`와 결합하면 컴파일러가 **exhaustiveness check(완전성 검사)**를 수행하여 누락된 케이스를 컴파일 에러로 잡아준다. 1.11에서 본 `num`이 `sealed class`인 이유가 바로 이것이다 — `int`와 `double`만 존재함을 컴파일 타임에 보장하므로, `switch (value) { int n => ..., double d => ... }`에서 `default` 없이도 완전성이 보장된다.
 
 > **꼬리질문**: `sealed class`는 `abstract class`와 어떻게 다른가요?
 >
-> **답변**: `abstract class`는 어디서든 상속할 수 있지만, `sealed class`는 **같은 라이브러리 내에서만** 직접 서브클래스를 정의할 수 있다. 이로 인해 컴파일러가 가능한 서브타입의 집합을 **완전히 파악**할 수 있으므로 exhaustiveness check가 가능해진다. 런타임 의미는 동일하지만(둘 다 인스턴스화 불가), 컴파일 타임 정적 분석 능력이 근본적으로 다르다.
+> **답변**: `abstract class`는 어디서든 상속할 수 있지만, `sealed class`는 같은 라이브러리 내에서만 직접 서브클래스를 정의할 수 있다. 컴파일러 입장에서 가능한 서브타입 집합을 전부 알 수 있으니 exhaustiveness check가 가능해진다. 런타임 동작은 동일하지만(둘 다 인스턴스화 불가), 컴파일 타임에 할 수 있는 분석이 완전히 달라진다.
 
 ---
 
