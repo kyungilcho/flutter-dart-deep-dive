@@ -44,7 +44,7 @@ abstract class Element extends DiagnosticableTree implements BuildContext {
 }
 ```
 
-> 💡 `BuildContext`는 인터페이스이고, `Element`가 이를 구현한다. `State.build(BuildContext context)`에서 받는 `context`는 실제로는 `StatefulElement` 인스턴스이다. 이것은 `StatefulElement.build()`에서 확인된다:
+> `BuildContext`는 인터페이스이고, `Element`가 이를 구현한다. `State.build(BuildContext context)`에서 받는 `context`는 실제로는 `StatefulElement` 인스턴스이다. `StatefulElement.build()`에서 확인할 수 있다:
 
 ```dart
 // framework.dart L5933-5934
@@ -71,7 +71,7 @@ T? findAncestorWidgetOfExactType<T extends Widget>() {
 }
 ```
 
-> ⚠️ **O(n)**: `_parent` 체인을 따라 루트까지 올라가며 검색한다. 트리가 깊으면 느립니다.
+> O(n): `_parent` 체인을 따라 루트까지 올라가며 검색한다. 트리가 깊으면 느리다.
 
 ### `findAncestorStateOfType` — 마찬가지로 O(n)
 
@@ -109,7 +109,7 @@ T? findRootAncestorStateOfType<T extends State<StatefulWidget>>() {
 }
 ```
 
-> 💡 `findAncestorStateOfType`은 가장 가까운 조상을, `findRootAncestorStateOfType`은 가장 먼 조상을 찾는다. 전자는 일찍 break할 수 있지만, 후자는 항상 루트까지 순회한다.
+> `findAncestorStateOfType`은 가장 가까운 조상을, `findRootAncestorStateOfType`은 가장 먼 조상을 찾는다. 전자는 일찍 break할 수 있지만, 후자는 항상 루트까지 순회한다.
 
 ### 성능 비교표
 
@@ -128,7 +128,7 @@ T? findRootAncestorStateOfType<T extends State<StatefulWidget>>() {
 ### InheritedWidget 기본 구조
 
 ```dart
-// framework.dart L1694-1710 — InheritedWidget
+// framework.dart L1853 부근 — InheritedWidget
 abstract class InheritedWidget extends ProxyWidget {
   const InheritedWidget({super.key, required super.child});
   
@@ -214,7 +214,7 @@ void _updateInheritance() {
 }
 ```
 
-> 💡 **PersistentHashMap**: 함수형 자료구조로, `put`이 기존 맵을 수정하지 않고 새 맵을 반환한다. 이 덕분에 형제 노드들은 부모의 원본 맵을 공유하면서, 자기 자신만 추가한 새 맵을 자손에게 전달한다.
+> `PersistentHashMap`은 함수형 자료구조로, `put`이 기존 맵을 수정하지 않고 새 맵을 반환한다. 이 덕분에 형제 노드들은 부모의 원본 맵을 공유하면서, 자기 자신만 추가한 새 맵을 자손에게 전달한다.
 
 ### 동작 시각화
 
@@ -294,7 +294,7 @@ graph LR
     style dependents fill:#FFB74D
 ```
 
-> 📌 **양방향 등록**: Element은 `_dependencies`에 자신이 의존하는 `InheritedElement`들을 기록하고, `InheritedElement`은 `_dependents`에 자신에게 의존하는 Element들을 기록한다.
+> 양방향 등록: Element은 `_dependencies`에 자신이 의존하는 `InheritedElement`들을 기록하고, `InheritedElement`은 `_dependents`에 자신에게 의존하는 Element들을 기록한다.
 
 ---
 
@@ -549,7 +549,7 @@ class EmailDisplay extends StatelessWidget {
 }
 ```
 
-> 💡 `email`만 바뀌면 `NameDisplay`는 리빌드되지 않는다. 이것이 `InheritedModel`의 성능 이점이다.
+> `email`만 바뀌면 `NameDisplay`는 리빌드되지 않는다. `InheritedModel`의 aspect 기반 선택적 리빌드 덕분이다.
 
 ---
 
@@ -618,7 +618,7 @@ BuildContext를 통해 트리 탐색(`findAncestor*`), InheritedWidget 의존 �
 
 **A**: 내부적으로 `context.dependOnInheritedWidgetOfExactType<Theme>()`을 호출한다. 이 메서드는 Element의 `_inheritedElements`라는 `PersistentHashMap<Type, InheritedElement>`에서 `Type` 키로 해시맵 조회를 한다. 따라서 O(1)이다.
 
-이 맵은 `_updateInheritance()` 메서드로 유지된다. 일반 Element는 부모의 맵을 그대로 참조하고, `InheritedElement`만 `PersistentHashMap.put()`으로 자신을 추가한 새 맵을 만듭니다. 이 불변 해시맵 구조 덕분에 형제 노드들은 맵을 안전하게 공유할 수 있다.
+이 맵은 `_updateInheritance()` 메서드로 유지된다. 일반 Element는 부모의 맵을 그대로 참조하고, `InheritedElement`만 `PersistentHashMap.put()`으로 자신을 추가한 새 맵을 만든다. 이 불변 해시맵 구조 덕분에 형제 노드들은 맵을 안전하게 공유할 수 있다.
 
 반면 `findAncestorWidgetOfExactType`은 `_parent` 체인을 순회하므로 O(n)이다.
 

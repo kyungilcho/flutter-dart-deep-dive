@@ -2,7 +2,7 @@
 
 ## 5.1 세 개의 트리 이해하기
 
-Flutter는 화면을 그리기 위해 **세 개의 트리**를 유지한다:
+Flutter는 화면을 그리기 위해 세 개의 트리를 유지한다:
 
 ```
 Widget Tree          Element Tree         RenderObject Tree
@@ -23,13 +23,13 @@ Container ──────▶ ComponentElement        ╌╌╌ (없음)
 
 | | React | SwiftUI | Android View | Flutter |
 |--|-------|---------|-------------|---------|
-| 선언적 UI | ✅ | ✅ | ❌ (명령형) | ✅ |
-| 가상 DOM / 디핑 | Virtual DOM | AttributeGraph | — | **Element Tree** |
-| 렌더링 단위 | DOM Node | UIView | View | **RenderObject** |
-| 재사용 전략 | key + type | identity | id | **runtimeType + key** |
-| 불변 설정 | JSX (불변) | ViewBody (불변) | — | **Widget (불변)** |
+| 선언적 UI | O | O | X (명령형) | O |
+| 가상 DOM / 디핑 | Virtual DOM | AttributeGraph | — | Element Tree |
+| 렌더링 단위 | DOM Node | UIView | View | RenderObject |
+| 재사용 전략 | key + type | identity | id | runtimeType + key |
+| 불변 설정 | JSX (불변) | ViewBody (불변) | — | Widget (불변) |
 
-> **핵심**: Flutter의 Element Tree는 React의 Virtual DOM과 같은 역할을 한다. Widget은 React의 JSX처럼 불변 설정이고, Element가 실제 인스턴스를 관리한다.
+> Flutter의 Element Tree는 React의 Virtual DOM과 같은 역할을 한다. Widget은 React의 JSX처럼 불변 설정이고, Element가 실제 인스턴스를 관리한다.
 
 ---
 
@@ -37,7 +37,7 @@ Container ──────▶ ComponentElement        ╌╌╌ (없음)
 
 ### 소스코드 분석: Widget 클래스
 
-> 📁 `_sources/flutter/packages/flutter/lib/src/widgets/framework.dart`
+> `flutter/packages/flutter/lib/src/widgets/framework.dart`
 
 ```dart
 /// Widgets are the central class hierarchy in the Flutter framework.
@@ -55,13 +55,13 @@ abstract class Widget extends DiagnosticableTree {
   @factory
   Element createElement();
 
-  /// ⭐ Widget 교체 여부를 결정하는 핵심 메서드
+  /// Widget 교체 여부를 결정하는 메서드
   static bool canUpdate(Widget oldWidget, Widget newWidget) {
     return oldWidget.runtimeType == newWidget.runtimeType
         && oldWidget.key == newWidget.key;
   }
 
-  // ⭐ == 와 hashCode를 override 금지!
+  // == 와 hashCode를 override 금지!
   @override
   @nonVirtual
   bool operator ==(Object other) => super == other;
@@ -91,10 +91,7 @@ class MyWidget extends StatelessWidget {
 }
 ```
 
-> **설계 의도**: Widget을 불변으로 만들면:
-> 1. **비교가 단순해진다** — `runtimeType`과 `key`만 비교하면 충분
-> 2. **부수효과가 없다** — Widget 생성이 안전 (UI 스레드에서 자유롭게 생성)
-> 3. **const 최적화** — `const` Widget은 메모리에 하나만 존재
+> Widget이 불변이면 `runtimeType`과 `key`만 비교하면 되므로 디핑이 단순해진다. 또한 Widget 생성에 부수효과가 없어 UI 스레드에서 안전하게 생성할 수 있고, `const`로 선언하면 컴파일 타임에 인스턴스가 하나로 정규화된다.
 
 ### `canUpdate` — Widget 재사용 판단
 
@@ -133,7 +130,7 @@ abstract class StatefulWidget extends Widget {
   @override
   StatefulElement createElement() => StatefulElement(this);
 
-  // ⭐ 핵심: State 객체를 생성하는 팩토리 메서드
+  // State 객체를 생성하는 팩토리 메서드
   @protected
   @factory
   State createState();
@@ -176,15 +173,12 @@ void setState(VoidCallback fn) {
     return true;
   }());
 
-  // 3. 핵심: Element를 "dirty"로 마킹
+  // 3. Element를 "dirty"로 마킹
   _element!.markNeedsBuild();
 }
 ```
 
-> **발견**: `setState()`는 매우 단순하다.
-> 1. 전달받은 콜백을 **동기적으로 즉시 실행**
-> 2. `_element!.markNeedsBuild()`를 호출하여 다음 프레임에 `build()` 재실행을 예약
-> 3. `setState(() {})`처럼 빈 콜백을 넘겨도 동작한다 — 상태 변경이 아닌 **리빌드 예약이 핵심**
+> `setState()`는 단순하다. 전달받은 콜백을 동기적으로 즉시 실행한 뒤 `_element!.markNeedsBuild()`를 호출하여 다음 프레임에 `build()` 재실행을 예약한다. `setState(() {})`처럼 빈 콜백을 넘겨도 동작한다 — 상태 변경 자체가 아니라 리빌드 예약이 본질이다.
 
 ```dart
 // ❌ 흔한 오해: setState 안에서 상태를 변경해야 한다?
@@ -205,7 +199,7 @@ setState(() {});  // 빈 콜백도 가능!
 
 ### 소스코드 분석: updateChild
 
-> 📁 `_sources/flutter/packages/flutter/lib/src/widgets/framework.dart` (line 3982)
+> `flutter/packages/flutter/lib/src/widgets/framework.dart` (line 3982)
 
 ```dart
 Element? updateChild(Element? child, Widget? newWidget, Object? newSlot) {
@@ -267,13 +261,13 @@ updateChild(child, newWidget, newSlot)
             → inflateWidget(newWidget) → return newChild
 ```
 
-> **핵심 발견**: `child.widget == newWidget`이 `true`인 경우 (동일 인스턴스) 아무 작업도 하지 않는다. 이것이 **`const` Widget의 성능 이점**이다. `const` Widget은 동일한 인스턴스가 재사용되므로 `updateChild`에서 즉시 반환된다.
+> `child.widget == newWidget`이 `true`인 경우 (동일 인스턴스) 아무 작업도 하지 않는다. 이것이 `const` Widget의 성능 이점이다. `const` Widget은 동일한 인스턴스가 재사용되므로 `updateChild`에서 즉시 반환된다.
 
 ---
 
 ## 5.5 RenderObject의 레이아웃과 페인트
 
-> 📌 **더 깊이 알고 싶다면**: RenderObject를 직접 만들어야 하는 경우, `BoxConstraints` 프로토콜 심화, 커스텀 `RenderObjectWidget` 작성법 (Leaf/SingleChild/Multi 3가지 예제) 등은 [Ch08 — 레이아웃 시스템과 RenderObject](./ch08_layout_system.md)에서 상세히 다룬다.
+> 더 깊이 알고 싶다면: RenderObject를 직접 만들어야 하는 경우, `BoxConstraints` 프로토콜 심화, 커스텀 `RenderObjectWidget` 작성법 (Leaf/SingleChild/Multi 3가지 예제) 등은 [Ch08 — 레이아웃 시스템과 RenderObject](./ch08_layout_system.md)에서 상세히 다룬다.
 
 ### Layout Pipeline
 
@@ -317,7 +311,7 @@ void layout(Constraints constraints, {bool parentUsesSize = false}) {
 
   // 2. 이미 레이아웃되었고 constraints가 같으면 → 건너뜀!
   if (!_needsLayout && constraints == _constraints) {
-    return;  // ⭐ 핵심 최적화!
+    return;  // 핵심 최적화
   }
 
   _constraints = constraints;
@@ -335,7 +329,7 @@ void layout(Constraints constraints, {bool parentUsesSize = false}) {
 }
 ```
 
-### Relayout Boundary — 레이아웃 최적화의 핵심
+### Relayout Boundary — 레이아웃 전파 차단
 
 ```dart
 // _isRelayoutBoundary가 true가 되는 조건:
@@ -345,7 +339,7 @@ _isRelayoutBoundary = !parentUsesSize    // 부모가 자식 크기를 사용하
     || parent == null;                   // 루트 노드
 ```
 
-> **발견**: `SizedBox(width: 100, height: 100, child: ...)` 같은 위젯은 tight constraints를 제공하므로 자식이 relayout boundary가 된다. 자식의 레이아웃이 변경되어도 `SizedBox` 위로 전파되지 않는다. 이것이 **레이아웃 최적화의 핵심 메커니즘**이다.
+> `SizedBox(width: 100, height: 100, child: ...)` 같은 위젯은 tight constraints를 제공하므로 자식이 relayout boundary가 된다. 자식의 레이아웃이 변경되어도 `SizedBox` 위로 전파되지 않는다.
 
 ### RepaintBoundary — 페인팅 최적화
 
@@ -407,7 +401,7 @@ Column(children: [
 
 ### `updateChildren` — 리스트 디핑 알고리즘
 
-> 📁 `_sources/flutter/packages/flutter/lib/src/widgets/framework.dart` (line 4125)
+> `flutter/packages/flutter/lib/src/widgets/framework.dart` (line 4125)
 
 ```
 Flutter의 리스트 비교 알고리즘:
@@ -420,7 +414,7 @@ Flutter의 리스트 비교 알고리즘:
    [A, B, C, D, E]  →  [A, B, F, D, E]
               ✅ ✅              ✅ ✅
 
-3. 마 중간 부분: Key 기반 매칭
+3. 남은 중간 부분: Key 기반 매칭
    old: [C]  →  new: [F]
    C는 deactivate, F는 inflate
 
@@ -446,8 +440,8 @@ static ThemeData of(BuildContext context) {
 
 ```dart
 // Element 내부에서 InheritedWidget을 찾는 방법:
-// HashMap으로 타입별 InheritedElement를 저장!
-Map<Type, InheritedElement>? _inheritedElements;
+// PersistentHashMap으로 타입별 InheritedElement를 저장!
+PersistentHashMap<Type, InheritedElement>? _inheritedElements;
 
 // → O(1) 조회! 트리를 위로 올라가며 찾는 것이 아니다
 T? dependOnInheritedWidgetOfExactType<T extends InheritedWidget>() {
@@ -459,7 +453,7 @@ T? dependOnInheritedWidgetOfExactType<T extends InheritedWidget>() {
 }
 ```
 
-> **발견**: `Theme.of(context)`, `MediaQuery.of(context)` 등은 트리를 순회하지 않는다. 각 Element가 **HashMap**으로 상위의 InheritedElement 참조를 캐시하고 있어 **O(1)**으로 접근한다. 이것이 Flutter에서 InheritedWidget 조회가 빠른 이유다.
+> `Theme.of(context)`, `MediaQuery.of(context)` 등은 트리를 순회하지 않는다. 각 Element가 `PersistentHashMap`으로 상위의 InheritedElement 참조를 캐시하고 있어 O(1)으로 접근한다. `PersistentHashMap`은 불변 해시맵의 일종으로, 부모의 맵을 효율적으로 공유하면서 InheritedElement 추가 시에만 새 버전을 만든다.
 
 ### 의존성 등록과 리빌드
 
@@ -651,19 +645,19 @@ Flutter DevTools > Performance > Widget rebuild counts
 
 ### Q1. Flutter의 세 개의 트리를 설명하세요.
 
-**모범 답변**: Flutter는 Widget Tree, Element Tree, RenderObject Tree 세 개를 유지한다. **Widget**은 불변(immutable)의 설정 객체로, UI의 "설계도"다. 매 프레임마다 새로 생성될 수 있다. **Element**는 Widget과 RenderObject를 중개하는 "인스턴스 관리자"로, Widget이 재생성되어도 Element는 재사용된다. `canUpdate`(runtimeType + key 비교)를 통해 기존 Element를 업데이트할지, 새로 만들지 결정한다. **RenderObject**는 실제 레이아웃(크기/위치 계산)과 페인팅(화면 그리기)을 담당한다. 모든 Widget이 RenderObject를 갖는 것은 아니며, `Container`처럼 다른 Widget을 조합하는 Widget은 RenderObject 없이 Element만 가진다.
+모범 답변: Flutter는 Widget Tree, Element Tree, RenderObject Tree 세 개를 유지한다. Widget은 불변(immutable)의 설정 객체로, UI의 "설계도"다. 매 프레임마다 새로 생성될 수 있다. Element는 Widget과 RenderObject를 중개하는 "인스턴스 관리자"로, Widget이 재생성되어도 Element는 재사용된다. `canUpdate`(runtimeType + key 비교)를 통해 기존 Element를 업데이트할지, 새로 만들지 결정한다. RenderObject는 실제 레이아웃(크기/위치 계산)과 페인팅(화면 그리기)을 담당한다. 모든 Widget이 RenderObject를 갖는 것은 아니며, `Container`처럼 다른 Widget을 조합하는 Widget은 RenderObject 없이 Element만 가진다.
 
 ### Q2. `setState()`는 내부적으로 무엇을 하나요?
 
-**모범 답변**: `setState()`는 매우 단순하다. 소스코드를 보면, 전달받은 콜백을 **동기적으로 즉시 실행**하고, 그 다음 `_element!.markNeedsBuild()`를 호출한다. `markNeedsBuild()`는 해당 Element를 "dirty"로 표시하여 다음 프레임의 빌드 단계에서 `build()` 메서드가 다시 호출되도록 예약한다. 중요한 점은 `setState`의 핵심이 "상태 변경"이 아닌 **"리빌드 예약"**이라는 것이다. 실제로 `setState(() {})`처럼 빈 콜백을 넘겨도 리빌드가 발생한다. 콜백 안에서 상태를 변경하는 것은 가독성을 위한 관례다.
+모범 답변: `setState()`는 매우 단순하다. 소스코드를 보면, 전달받은 콜백을 동기적으로 즉시 실행하고, 그 다음 `_element!.markNeedsBuild()`를 호출한다. `markNeedsBuild()`는 해당 Element를 "dirty"로 표시하여 다음 프레임의 빌드 단계에서 `build()` 메서드가 다시 호출되도록 예약한다. 중요한 점은 `setState`의 핵심이 "상태 변경"이 아닌 "리빌드 예약"이라는 것이다. 실제로 `setState(() {})`처럼 빈 콜백을 넘겨도 리빌드가 발생한다. 콜백 안에서 상태를 변경하는 것은 가독성을 위한 관례다.
 
 ### Q3. `const` Widget이 성능에 좋은 이유를 내부 구현 측면에서 설명하세요.
 
-**모범 답변**: `const` Widget은 **컴파일 타임에 단일 인스턴스로 정규화(canonicalization)**된다. 이로 인해 `updateChild`에서 `child.widget == newWidget` 비교가 `true`가 되어 **어떤 비교나 업데이트 작업도 수행하지 않고 즉시 반환**한다. `const`가 아닌 Widget은 설령 모든 프로퍼티가 같더라도 `==`가 identity 비교이므로 매번 새 인스턴스로 취급되어 `canUpdate` → `update()`의 전체 경로를 거친다. 따라서 `const`Widget을 사용하면 `updateChild`의 가장 빠른 경로를 타게 되어 리빌드 비용이 극적으로 줄어든다.
+모범 답변: `const` Widget은 컴파일 타임에 단일 인스턴스로 정규화(canonicalization)된다. 이로 인해 `updateChild`에서 `child.widget == newWidget` 비교가 `true`가 되어 어떤 비교나 업데이트 작업도 수행하지 않고 즉시 반환한다. `const`가 아닌 Widget은 설령 모든 프로퍼티가 같더라도 `==`가 identity 비교이므로 매번 새 인스턴스로 취급되어 `canUpdate` → `update()`의 전체 경로를 거친다. `const` Widget을 쓰면 `updateChild`의 가장 빠른 경로를 타게 되므로 리빌드 비용이 크게 줄어든다.
 
 ### Q4. InheritedWidget의 조회가 O(1)인 이유는?
 
-**모범 답변**: 각 Element는 `_inheritedElements`라는 `HashMap<Type, InheritedElement>`을 유지한다. Element가 mount될 때 부모의 HashMap을 복사하고, InheritedElement는 자신을 이 HashMap에 추가한다. 따라서 `dependOnInheritedWidgetOfExactType<T>()`를 호출하면 트리를 순회하는 것이 아니라 HashMap에서 타입 `T`로 직접 조회한다. 이것이 `Theme.of(context)`, `MediaQuery.of(context)` 등이 빠른 이유다. 다만, 이 메서드는 호출한 Element를 InheritedElement의 의존자로 등록하므로, InheritedWidget이 변경되면 등록된 모든 Element가 리빌드된다.
+모범 답변: 각 Element는 `_inheritedElements`라는 `PersistentHashMap<Type, InheritedElement>`을 유지한다. `PersistentHashMap`은 불변 해시맵이라 부모의 맵을 효율적으로 공유하면서, InheritedElement가 추가될 때만 새 버전을 만든다. `dependOnInheritedWidgetOfExactType<T>()`를 호출하면 트리를 순회하는 것이 아니라 이 맵에서 타입 `T`로 직접 조회한다. 이것이 `Theme.of(context)`, `MediaQuery.of(context)` 등이 빠른 이유다. 다만, 이 메서드는 호출한 Element를 InheritedElement의 의존자로 등록하므로, InheritedWidget이 변경되면 등록된 모든 Element가 리빌드된다.
 
 ---
 
@@ -679,6 +673,6 @@ Flutter DevTools > Performance > Widget rebuild counts
 | `setState` | 콜백 즉시 실행 + `markNeedsBuild()` |
 | `const` Widget | `updateChild`에서 즉시 반환 (최적화 최고 경로) |
 | Key | 리스트에서 StatefulWidget 식별에 필수 |
-| InheritedWidget | HashMap으로 O(1) 조회. 의존자 자동 리빌드 |
+| InheritedWidget | PersistentHashMap으로 O(1) 조회. 의존자 자동 리빌드 |
 | RelayoutBoundary | layout 전파 차단. tight constraints가 핵심 |
 | RepaintBoundary | paint 전파 차단. 복잡한 애니메이션에 유용 |

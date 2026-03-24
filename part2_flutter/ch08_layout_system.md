@@ -2,7 +2,7 @@
 
 ## 8.1 왜 RenderObject를 직접 다뤄야 하는가
 
-Flutter의 위젯 시스템은 **두 개의 추상화 레벨**이 있다:
+Flutter의 위젯 시스템은 두 개의 추상화 레벨이 있다:
 
 ```
 추상화 레벨 높음 ───────────────────────────────── 낮음
@@ -110,18 +110,18 @@ class BoxConstraints extends Constraints {
 ```dart
 // SizedBox(width: 200, height: 100, child: Padding(padding: 20, child: Text))
 
-// 1️⃣ SizedBox가 자식에게 tight constraints 전달:
+// 1. SizedBox가 자식에게 tight constraints 전달:
 //    BoxConstraints.tight(Size(200, 100))
 //    → minWidth=200, maxWidth=200, minHeight=100, maxHeight=100
 
-// 2️⃣ Padding(EdgeInsets.all(20))의 performLayout():
+// 2. Padding(EdgeInsets.all(20))의 performLayout():
 //    자식에게 전달할 constraints = 부모 constraints에서 padding을 뺌
 //    → BoxConstraints.tight(Size(200-40, 100-40))
 //    → BoxConstraints.tight(Size(160, 60))
 //    → Text는 160×60 영역 안에서 렌더링
 
-// 3️⃣ Text가 Size를 결정하여 부모에게 보고
-// 4️⃣ Padding이 자식 위치를 offset(20, 20)으로 설정
+// 3. Text가 Size를 결정하여 부모에게 보고
+// 4. Padding이 자식 위치를 offset(20, 20)으로 설정
 ```
 
 ---
@@ -137,7 +137,7 @@ class BoxConstraints extends Constraints {
 abstract class RenderObjectWidget extends Widget {
   const RenderObjectWidget({super.key});
 
-  // ⭐ 핵심 메서드 3개
+  // 핵심 메서드 3개
 
   // 1. Element 생성 — 트리 관리 담당
   @override
@@ -265,7 +265,7 @@ class RenderColorDot extends RenderBox {
   set color(Color value) {
     if (_color == value) return;  // 같으면 무시
     _color = value;
-    markNeedsPaint();  // ⚡ 색상만 바뀌면 → paint만 다시
+    markNeedsPaint();  // 색상만 바뀌면 → paint만 다시
   }
 
   double get radius => _radius;
@@ -273,7 +273,7 @@ class RenderColorDot extends RenderBox {
   set radius(double value) {
     if (_radius == value) return;
     _radius = value;
-    markNeedsLayout();  // ⚡ 크기가 바뀌면 → layout부터 다시
+    markNeedsLayout();  // 크기가 바뀌면 → layout부터 다시
   }
 
   // ═══════ Layout ═══════
@@ -310,10 +310,7 @@ class RenderColorDot extends RenderBox {
 }
 ```
 
-> **설계 포인트**:
-> - `color` setter는 `markNeedsPaint()` — 크기 변경 없이 색상만 변경
-> - `radius` setter는 `markNeedsLayout()` — 크기가 바뀌므로 레이아웃부터 재실행
-> - 이 구분이 **성능 최적화의 핵심** — 불필요한 레이아웃을 건너뜀
+> `color` setter는 `markNeedsPaint()`를, `radius` setter는 `markNeedsLayout()`을 호출한다. 크기에 영향 없는 속성은 paint만 다시 실행하고, 크기가 바뀌는 속성은 layout부터 재실행한다. 이 구분이 불필요한 레이아웃을 건너뛰는 성능 최적화의 핵심이다.
 
 ### 예제 2: SingleChildRenderObjectWidget — 커스텀 Padding
 
@@ -361,21 +358,21 @@ class RenderCircularPadding extends RenderShiftedBox {
   void performLayout() {
     final child = this.child;
     if (child != null) {
-      // 1️⃣ 자식에게 줄 constraints 계산
+      // 1. 자식에게 줄 constraints 계산
       //    부모의 constraints에서 padding만큼 줄임
       final innerConstraints = constraints.deflate(
         EdgeInsets.all(_padding),
       );
 
-      // 2️⃣ 자식의 layout 실행 → 자식의 size 확정
+      // 2. 자식의 layout 실행 → 자식의 size 확정
       child.layout(innerConstraints, parentUsesSize: true);
       //                              ↑ 자식 크기를 사용할 것임을 명시
 
-      // 3️⃣ 자식 위치 설정 (Parent sets position!)
+      // 3. 자식 위치 설정 (Parent sets position!)
       final childParentData = child.parentData! as BoxParentData;
       childParentData.offset = Offset(_padding, _padding);
 
-      // 4️⃣ 자신의 size = 자식 size + padding
+      // 4. 자신의 size = 자식 size + padding
       size = constraints.constrain(Size(
         child.size.width + _padding * 2,
         child.size.height + _padding * 2,
@@ -445,11 +442,11 @@ class RenderRadialLayout extends RenderBox
 
   @override
   void performLayout() {
-    // 1️⃣ 자식 수 카운트
+    // 1. 자식 수 카운트
     int childCount = 0;
     visitChildren((_) => childCount++);
 
-    // 2️⃣ 각 자식의 layout 수행
+    // 2. 각 자식의 layout 수행
     final angleStep = 2 * math.pi / childCount;
     int index = 0;
     RenderBox? child = firstChild;
@@ -461,7 +458,7 @@ class RenderRadialLayout extends RenderBox
         parentUsesSize: true,
       );
 
-      // 3️⃣ 자식 위치를 원형으로 계산
+      // 3. 자식 위치를 원형으로 계산
       final angle = angleStep * index;
       final childParentData = child.parentData! as RadialParentData;
       childParentData.offset = Offset(
@@ -473,7 +470,7 @@ class RenderRadialLayout extends RenderBox
       index++;
     }
 
-    // 4️⃣ 자신의 크기 = 반지름 * 2
+    // 4. 자신의 크기 = 반지름 * 2
     size = constraints.constrain(Size(_radius * 2, _radius * 2));
   }
 
@@ -524,16 +521,16 @@ class RenderRadialLayout extends RenderBox
 > 📁 `_sources/flutter/packages/flutter/lib/src/rendering/object.dart`
 
 ```dart
-// ⚠️ layout()은 부모가 호출한다 — 절대 직접 호출하지 않음
+// layout()은 부모가 호출한다 — 절대 직접 호출하지 않음
 void layout(Constraints constraints, { bool parentUsesSize = false }) {
-  // 1️⃣ Relayout Boundary 판단
+  // 1. Relayout Boundary 판단
   final bool isRelayoutBoundary =
       !parentUsesSize              // 부모가 자식 크기 안 씀
       || sizedByParent             // 크기가 constraints에만 의존
       || constraints.isTight       // tight constraints
       || !isRepaintBoundary;       // repaint 경계가 아님
 
-  // 2️⃣ 이전 layout과 constraints가 동일하면 → 건너뜀! (핵심 최적화)
+  // 2. 이전 layout과 constraints가 동일하면 → 건너뜀! (핵심 최적화)
   if (!_needsLayout && constraints == _constraints) {
     // relayoutBoundary만 업데이트하고 반환
     return;
@@ -541,15 +538,15 @@ void layout(Constraints constraints, { bool parentUsesSize = false }) {
 
   _constraints = constraints;
 
-  // 3️⃣ sizedByParent이면 → performResize() 먼저
+  // 3. sizedByParent이면 → performResize() 먼저
   if (sizedByParent) {
     performResize();
   }
 
-  // 4️⃣ performLayout() 실행
+  // 4. performLayout() 실행
   performLayout();
 
-  // 5️⃣ layout 완료 → paint 필요 표시
+  // 5. layout 완료 → paint 필요 표시
   _needsLayout = false;
   markNeedsPaint();
 }
@@ -574,7 +571,7 @@ child.layout(constraints, parentUsesSize: true);
 //   Text의 intrinsic width에 따라 자신의 크기가 변하므로
 //   parentUsesSize: true 필수
 
-// 🔑 실무 규칙:
+// 실무 규칙:
 // "자식의 size를 읽지 않는다면, parentUsesSize: false로 두세요"
 // → layout 전파가 차단되어 성능 향상
 ```
@@ -598,7 +595,7 @@ Size computeDryLayout(BoxConstraints constraints) {
 
 // WHY: sizedByParent가 true이면
 // → 부모가 constraints를 안 바꾸면 → performResize()도 건너뜀
-// → layout 연산 최소화 → 성능 ⬆️
+// → layout 연산 최소화 → 성능 향상
 ```
 
 ---
@@ -645,7 +642,7 @@ markNeedsLayout()              markNeedsPaint()
             ▼                     ▼
        paint() 재실행          화면 갱신
 
-💡 규칙:
+규칙:
 - 크기나 위치가 변하면 → markNeedsLayout()
 - 시각적 속성만 변하면 → markNeedsPaint() (더 저렴)
 - markNeedsLayout()은 항상 markNeedsPaint()를 포함
@@ -684,7 +681,7 @@ _isRelayoutBoundary =
 ### 생성하는 위젯 예시
 
 ```dart
-// 📌 이 위젯들은 자식에게 tight constraints를 전달한다:
+// 이 위젯들은 자식에게 tight constraints를 전달한다:
 SizedBox(width: 100, height: 100, child: ...)      // 고정 크기
 ConstrainedBox(constraints: BoxConstraints.tight()) // 강제 tight
 Expanded(child: ...)                                // Flex가 tight로 줌
@@ -692,7 +689,7 @@ Expanded(child: ...)                                // Flex가 tight로 줌
 // → 자식은 자동으로 Relayout Boundary가 됨
 // → 자식의 내부 layout이 변해도 부모에게 전파 안 됨
 
-// 📌 항상 Relayout Boundary인 위젯:
+// 항상 Relayout Boundary인 위젯:
 ListView()  // 내부적으로 sizedByParent = true
 GridView()  // 내부적으로 sizedByParent = true
 // → 목록 내용이 변해도 목록의 크기는 변하지 않음
@@ -743,7 +740,7 @@ class MyCustomWidget extends LeafRenderObjectWidget {
 | **성능** | 좋음 | 최적 (불필요한 레이어 없음) |
 | **사용 빈도** | 차트, 그래프, 간단한 그리기 | 커스텀 레이아웃, 프레임워크 확장 |
 
-> **실무 규칙**: 기존 레이아웃 위에 그림만 그리면 → `CustomPaint`. 레이아웃 자체를 바꿔야 하면 → 커스텀 `RenderObject`.
+> 기존 레이아웃 위에 그림만 그리면 `CustomPaint`로 충분하고, 레이아웃 자체를 바꿔야 하면 커스텀 `RenderObject`를 작성한다.
 
 ---
 
@@ -799,7 +796,7 @@ void main() {
 }
 
 // 3. RenderObject.debugDescribeChildren()으로 트리 정보 출력
-// 커스텼 RenderObject에서:
+// 커스텀 RenderObject에서:
 @override
 List<DiagnosticsNode> debugDescribeChildren() {
   return <DiagnosticsNode>[
@@ -814,11 +811,11 @@ List<DiagnosticsNode> debugDescribeChildren() {
 
 ### Q1. Flutter의 Constraints 프로토콜을 설명하세요.
 
-**모범 답변**: Flutter의 레이아웃은 "Constraints go down, Sizes go up, Parent sets position"이라는 단방향 흐름을 따릅니다. 부모는 자식에게 `BoxConstraints`(minWidth, maxWidth, minHeight, maxHeight)를 전달하고, 자식은 그 범위 내에서 자신의 `Size`를 결정하여 부모에게 보고한다. 최종적으로 부모가 `parentData.offset`을 설정하여 자식의 위치를 결정한다. 이 프로토콜 덕분에 레이아웃은 항상 O(n) — 트리를 두 번(down → up) 순회하면 완료된다. 비교하면 CSS의 레이아웃은 여러 패스가 필요할 수 있어 비효율적이다.
+**모범 답변**: Flutter의 레이아웃은 "Constraints go down, Sizes go up, Parent sets position"이라는 단방향 흐름을 따른다. 부모는 자식에게 `BoxConstraints`(minWidth, maxWidth, minHeight, maxHeight)를 전달하고, 자식은 그 범위 내에서 자신의 `Size`를 결정하여 부모에게 보고한다. 최종적으로 부모가 `parentData.offset`을 설정하여 자식의 위치를 결정한다. 이 프로토콜 덕분에 레이아웃은 항상 O(n) — 트리를 두 번(down → up) 순회하면 완료된다. 비교하면 CSS의 레이아웃은 여러 패스가 필요할 수 있어 비효율적이다.
 
 ### Q2. `markNeedsLayout()`과 `markNeedsPaint()`의 차이는?
 
-**모범 답변**: `markNeedsLayout()`은 크기나 위치가 변경되었을 때 호출하며, `performLayout()` → `paint()` 순서로 다시 실행된다. `markNeedsPaint()`는 시각적 속성만 변경되었을 때(색상, 투명도 등) 호출하며 `paint()`만 다시 실행된다. `markNeedsLayout()`은 항상 `markNeedsPaint()`를 포함하므로, 불필요하게 `markNeedsLayout()`을 호출하면 성능이 떨어집니다. 실무에서 커스텀 RenderObject의 setter를 작성할 때, 어떤 속성이 size에 영향을 주는지 판단하여 적절한 mark 메서드를 호출하는 것이 성능 최적화의 핵심이다.
+**모범 답변**: `markNeedsLayout()`은 크기나 위치가 변경되었을 때 호출하며, `performLayout()` → `paint()` 순서로 다시 실행된다. `markNeedsPaint()`는 시각적 속성만 변경되었을 때(색상, 투명도 등) 호출하며 `paint()`만 다시 실행된다. `markNeedsLayout()`은 항상 `markNeedsPaint()`를 포함하므로, 불필요하게 `markNeedsLayout()`을 호출하면 성능이 떨어진다. 실무에서 커스텀 RenderObject의 setter를 작성할 때, 어떤 속성이 size에 영향을 주는지 판단하여 적절한 mark 메서드를 호출하는 것이 성능 최적화의 핵심이다.
 
 ### Q3. Relayout Boundary가 생성되는 조건과 그 의미는?
 
@@ -826,7 +823,7 @@ List<DiagnosticsNode> debugDescribeChildren() {
 
 ### Q4. `RenderObjectWidget`의 `Leaf`, `SingleChild`, `MultiChild` 차이를 설명하세요.
 
-**모범 답변**: 세 가지 모두 `RenderObjectWidget`의 서브클래스로, 자식 수에 따라 Element 관리 방식이 다릅니다. `LeafRenderObjectWidget`은 자식이 없으며(예: `RawImage`), `SingleChildRenderObjectWidget`은 자식 하나를 가지며(예: `Padding`, `Opacity`) RenderObject는 `RenderObjectWithChildMixin`을 사용한다. `MultiChildRenderObjectWidget`은 여러 자식을 가지며(예: `Stack`, `Row`) RenderObject는 `ContainerRenderObjectMixin`으로 연결 리스트를 관리한다. 이 분류가 중요한 이유는, Element가 자식의 mount/unmount를 자동 처리해주므로 개발자는 `createRenderObject()`와 `updateRenderObject()`만 구현하면 된다.
+**모범 답변**: 세 가지 모두 `RenderObjectWidget`의 서브클래스로, 자식 수에 따라 Element 관리 방식이 다르다. `LeafRenderObjectWidget`은 자식이 없으며(예: `RawImage`), `SingleChildRenderObjectWidget`은 자식 하나를 가지며(예: `Padding`, `Opacity`) RenderObject는 `RenderObjectWithChildMixin`을 사용한다. `MultiChildRenderObjectWidget`은 여러 자식을 가지며(예: `Stack`, `Row`) RenderObject는 `ContainerRenderObjectMixin`으로 연결 리스트를 관리한다. 이 분류가 중요한 이유는, Element가 자식의 mount/unmount를 자동 처리해주므로 개발자는 `createRenderObject()`와 `updateRenderObject()`만 구현하면 된다.
 
 ### Q5. `CustomPaint`와 커스텀 `RenderObject`의 차이는?
 

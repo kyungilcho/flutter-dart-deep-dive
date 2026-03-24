@@ -81,13 +81,13 @@ class StatefulElement extends ComponentElement {
     // 타입 검증: State<T>의 T와 Widget 타입 일치 확인
     assert(state._debugTypesAreRight(widget));
     
-    // 핵심: State ↔ Element 양방향 연결
+    // State ↔ Element 양방향 연결
     state._element = this;   // State.context가 가능해지는 이유
     state._widget = widget;  // State.widget이 가능해지는 이유
   }
 ```
 
-> 💡 **설계 포인트**: `createState()`는 생성자에서 호출된다. 따라서 `StatefulWidget` 인스턴스당 1개의 State가 생기는 것이 아니라, **`StatefulElement` 인스턴스당 1개**의 State가 생깁니다. 같은 `StatefulWidget` 인스턴스가 트리의 두 곳에 있으면 State도 2개이다.
+> `createState()`는 생성자에서 호출된다. 따라서 `StatefulWidget` 인스턴스당 1개의 State가 생기는 것이 아니라, `StatefulElement` 인스턴스당 1개의 State가 생긴다. 같은 `StatefulWidget` 인스턴스가 트리의 두 곳에 있으면 State도 2개이다.
 
 ### `_firstBuild()` — 초기화의 심장
 
@@ -162,7 +162,7 @@ InheritedWidget dependOnInheritedElement(Element ancestor, {Object? aspect}) {
 }
 ```
 
-> 📌 **핵심**: `initState()` 시점은 `_StateLifecycle.created`이다. `dependOnInheritedElement()`는 이 상태를 감지하고 즉시 에러를 던집니다. `didChangeDependencies()`는 `initialized` 이후에 호출되므로 안전하다.
+> `initState()` 시점은 `_StateLifecycle.created`이다. `dependOnInheritedElement()`는 이 상태를 감지하고 에러를 던진다. `didChangeDependencies()`는 `initialized` 이후에 호출되므로 안전하다.
 
 **결론**: `InheritedWidget`에 의존하는 초기화 로직은 반드시 `didChangeDependencies()`에 넣어야 한다.
 
@@ -232,7 +232,7 @@ void setState(VoidCallback fn) {
 }
 ```
 
-### `setState()` 설계 비화 💡
+### `setState()` 설계 비화
 
 setState의 원래 이름이 `markNeedsBuild`였다는 것을 소스코드 주석에서 확인할 수 있다:
 
@@ -252,7 +252,7 @@ setState의 원래 이름이 `markNeedsBuild`였다는 것을 소스코드 주�
 // was greatly reduced.
 ```
 
-> 💡 개발자가 "혹시 몰라서" 남발하는 걸 막기 위해 콜백을 요구하도록 API를 바꿨다. 콜백 안에서 실제 상태 변경을 하게 만들면 개발자가 "뭘 바꾸는지" 생각하게 된다.
+> 개발자가 "혹시 몰라서" 남발하는 걸 막기 위해 콜백을 요구하도록 API를 바꿨다. 콜백 안에서 실제 상태 변경을 하게 만들면 개발자가 "뭘 바꾸는지" 생각하게 된다.
 
 ### `markNeedsBuild()` — Dirty 리스트에 등록
 
@@ -319,7 +319,7 @@ sequenceDiagram
     E->>E: updateChild(...)
 ```
 
-> 📌 **핵심**: `setState()`는 동기이다. 콜백도 즉시 동기로 실행된다. 하지만 `build()`는 **다음 프레임**에서 일어납니다. `markNeedsBuild()`는 Element를 "dirty 리스트"에 등록만 하고, 실제 빌드는 `SchedulerBinding`이 다음 VSync에서 `buildScope()`를 호출할 때 수행된다.
+> `setState()`는 동기이다. 콜백도 즉시 동기로 실행된다. 하지만 `build()`는 다음 프레임에서 일어난다. `markNeedsBuild()`는 Element를 dirty 리스트에 등록만 하고, 실제 빌드는 `SchedulerBinding`이 다음 VSync에서 `buildScope()`를 호출할 때 수행된다.
 
 ---
 
@@ -356,7 +356,7 @@ void update(StatefulWidget newWidget) {
 }
 ```
 
-> 💡 `didUpdateWidget` 후에 `rebuild(force: true)`가 자동으로 호출되므로, `didUpdateWidget` 안에서 `setState`를 부르는 것은 불필요하다. 소스코드 주석에도 "any calls to setState in didUpdateWidget are redundant"라고 명시되어 있다.
+> `didUpdateWidget` 후에 `rebuild(force: true)`가 자동으로 호출되므로, `didUpdateWidget` 안에서 `setState`를 부르는 것은 불필요하다. 소스코드 주석에도 "any calls to setState in didUpdateWidget are redundant"라고 명시되어 있다.
 
 ### 언제 `didUpdateWidget`이 호출되나?
 
@@ -433,7 +433,7 @@ void activate() {
   super.activate();      // Element.activate() 먼저
   state.activate();      // State.activate() 호출
   
-  // 핵심: deactivate 중 해제한 리소스를 재할당하도록
+  // deactivate 중 해제한 리소스를 재할당하도록
   // 리빌드를 예약한다
   assert(_lifecycleState == _ElementLifecycle.active);
   markNeedsBuild();  // → build() 다시 호출됨
@@ -501,7 +501,7 @@ Widget build(BuildContext context) {
 4. build()                       ← State.build() 다시 호출
 ```
 
-> 💡 `deactivate()`에서 리소스를 해제하고 `activate()`에서 재획득하는 패턴이 가능하기 때문에, **비용이 큰 리소스는 `deactivate`에서 해제하고 `activate`에서 재설정**하는 것이 좋다.
+> `deactivate()`에서 리소스를 해제하고 `activate()`에서 재획득하는 패턴이 가능하므로, 비용이 큰 리소스는 `deactivate`에서 해제하고 `activate`에서 재설정하는 것이 좋다.
 
 ---
 
@@ -533,7 +533,7 @@ void didChangeDependencies() {
 }
 ```
 
-> 💡 **최적화**: `InheritedWidget`이 변경되면 `_didChangeDependencies = true`만 설정한다. 실제 `State.didChangeDependencies()`는 **`performRebuild()` 시점**에 호출된다. 이는 위젯이 트리에서 빠져나간 경우 불필요한 `didChangeDependencies` 호출을 막기 위한 설계이다:
+> `InheritedWidget`이 변경되면 `_didChangeDependencies = true`만 설정한다. 실제 `State.didChangeDependencies()`는 `performRebuild()` 시점에 호출된다. 위젯이 트리에서 빠져나간 경우 불필요한 호출을 막기 위한 설계이다:
 
 ```
 // framework.dart L6108-6116 주석:
@@ -736,7 +736,7 @@ void _increment() {
 }
 ```
 
-> `setState`의 콜백은 동기이므로 `_count`는 즉시 바뀝니다. 하지만 **UI 반영**은 다음 프레임이다.
+> `setState`의 콜백은 동기이므로 `_count`는 즉시 바뀐다. 하지만 UI 반영은 다음 프레임이다.
 
 ### 실수 2: `dispose()` 후 `setState()`
 
@@ -818,7 +818,7 @@ assert(() {
 
 **A**: `setState()`의 콜백 실행은 **동기**이다. 콜백을 즉시 호출하고, `_element!.markNeedsBuild()`를 호출한다. `markNeedsBuild()`는 Element를 dirty로 표시하고 `BuildOwner.scheduleBuildFor()`에 등록한다.
 
-하지만 실제 `build()`는 **비동기**적으로, 다음 VSync 프레임의 빌드 페이즈에서 일어납니다. `BuildOwner.buildScope()`가 dirty elements를 depth 순으로 정렬해서 빌드한다.
+하지만 실제 `build()`는 다음 VSync 프레임의 빌드 페이즈에서 일어난다. `BuildOwner.buildScope()`가 dirty elements를 depth 순으로 정렬해서 빌드한다.
 
 흥미로운 점은 `setState`의 원래 이름이 `markNeedsBuild`였다는 것이다. 개발자들이 "혹시 몰라서" 남발하는 문제 때문에 콜백을 받는 `setState`로 API를 변경했다.
 
@@ -826,7 +826,7 @@ assert(() {
 
 ### Q3. `initState()`에서 `Theme.of(context)`를 쓸 수 없는 이유는?
 
-**A**: `Theme.of(context)`는 내부적으로 `dependOnInheritedWidgetOfExactType()`을 호출한다. `StatefulElement`은 이 메서드를 오버라이드해서, `_StateLifecycle.created` 상태면 에러를 던집니다. `initState()` 시점이 바로 `created` 상태이다.
+**A**: `Theme.of(context)`는 내부적으로 `dependOnInheritedWidgetOfExactType()`을 호출한다. `StatefulElement`은 이 메서드를 오버라이드해서, `_StateLifecycle.created` 상태면 에러를 던진다. `initState()` 시점이 바로 `created` 상태이다.
 
 `initState()` 직후 `_StateLifecycle`이 `initialized`로 전이되고, 그 다음 `didChangeDependencies()`가 호출된다. 이 시점부터는 `dependOnInheritedWidgetOfExactType()` 호출이 가능하다.
 
